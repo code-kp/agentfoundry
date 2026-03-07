@@ -4,12 +4,42 @@ import { MessageItem } from "./MessageItem";
 
 export function MessageList({ messages, agentName, agentDescription }) {
   const listRef = useRef(null);
+  const previousSnapshotRef = useRef({
+    count: messages.length,
+    lastId: messages[messages.length - 1]?.id || null,
+    lastText: messages[messages.length - 1]?.text || "",
+    lastStreaming: Boolean(messages[messages.length - 1]?.streaming),
+  });
 
   useEffect(() => {
     if (!listRef.current) {
       return;
     }
-    listRef.current.scrollTop = listRef.current.scrollHeight;
+
+    const lastMessage = messages[messages.length - 1] || null;
+    const snapshot = {
+      count: messages.length,
+      lastId: lastMessage?.id || null,
+      lastText: lastMessage?.text || "",
+      lastStreaming: Boolean(lastMessage?.streaming),
+    };
+    const previousSnapshot = previousSnapshotRef.current;
+    const shouldScroll =
+      snapshot.count !== previousSnapshot.count
+      || snapshot.lastId !== previousSnapshot.lastId
+      || (
+        snapshot.lastStreaming
+        && snapshot.lastText !== previousSnapshot.lastText
+      );
+
+    if (shouldScroll) {
+      listRef.current.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: snapshot.count === previousSnapshot.count ? "smooth" : "auto",
+      });
+    }
+
+    previousSnapshotRef.current = snapshot;
   }, [messages]);
 
   if (!messages.length) {

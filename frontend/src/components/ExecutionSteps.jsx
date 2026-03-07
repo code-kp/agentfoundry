@@ -35,9 +35,10 @@ export function ExecutionSteps({ events, active }) {
   const listRef = useRef(null);
   const collapseTimeoutRef = useRef(null);
   const previousActiveRef = useRef(active);
+  const previousEventCountRef = useRef(events.length);
   const latestEvent = events[events.length - 1] || null;
   const liveEvents = events.slice(-4);
-  const visibleEvents = expanded ? events : liveEvents;
+  const visibleEvents = active || expanded ? events : liveEvents;
   const hiddenCount = Math.max(events.length - liveEvents.length, 0);
   const latestSummary = summarizeBody(latestEvent?.body);
   const showPanel = active || expanded || isCollapsing;
@@ -62,10 +63,17 @@ export function ExecutionSteps({ events, active }) {
 
   useEffect(() => {
     if (!showPanel || !listRef.current) {
+      previousEventCountRef.current = events.length;
       return;
     }
-    listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [events, showPanel]);
+
+    const behavior = active && previousEventCountRef.current > 0 ? "smooth" : "auto";
+    listRef.current.scrollTo({
+      top: listRef.current.scrollHeight,
+      behavior,
+    });
+    previousEventCountRef.current = events.length;
+  }, [active, events.length, showPanel]);
 
   useEffect(() => {
     if (active) {
@@ -107,7 +115,7 @@ export function ExecutionSteps({ events, active }) {
         showCollapsedSummary ? "collapsed" : "",
       ].filter(Boolean).join(" ")}
     >
-      <div className="execution-panel">
+      <div className={active ? "execution-panel live" : "execution-panel"}>
         <header className="execution-header">
           <div className="execution-status">
             <span className={active ? "execution-badge live" : "execution-badge"}>
@@ -136,7 +144,10 @@ export function ExecutionSteps({ events, active }) {
           )}
         </header>
 
-        <ol className="execution-list" ref={listRef}>
+        <ol
+          className={active ? "execution-list live" : "execution-list"}
+          ref={listRef}
+        >
           {visibleEvents.map((event, index) => {
             const absoluteIndex = expanded ? index : events.length - visibleEvents.length + index;
             const isLatest = absoluteIndex === events.length - 1;
