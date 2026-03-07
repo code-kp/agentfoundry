@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 from api import _parse_sse_frame
 from core.interfaces.agent import Agent
 from core.progress import EventStream
+from core.skill_resolver import ResolvedSkillContext
 from core.runtime import AgentRecord, AgentRuntime
 
 
@@ -111,14 +112,18 @@ class RuntimeGuardrailsTest(unittest.IsolatedAsyncioTestCase):
         runtime._model_source = "default"
         runtime.model_timeout_seconds = 60.0
         runtime._tool_descriptions = {}
-        runtime._selected_chunks = contextvars.ContextVar("selected_chunks_test", default=[])
+        runtime._resolved_skills = contextvars.ContextVar(
+            "resolved_skills_test",
+            default=ResolvedSkillContext(),
+        )
         runtime.skill_store = None
+        runtime.skill_resolver = object()
         runtime._session_service = object()
         runtime._session_keys = set()
         runtime.agent = object()
         runtime.runner = _NeverRespondingRunner()
         runtime.ensure_session = AsyncMock(return_value=None)
-        runtime._select_chunks = lambda query: []
+        runtime._resolve_skills = lambda query: ResolvedSkillContext()
         return runtime
 
     async def _collect_events(self, stream: EventStream):

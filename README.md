@@ -5,6 +5,7 @@ Framework-style platform for creating and running custom agents with:
 - strict separation of `core/` platform runtime and `workspace/` creator content
 - one shared workspace for agents, tools, and skills
 - class-based agent authoring API
+- metadata-driven skill discovery and scoped skill resolution
 - global typed registry (`Register.get(Type, name)`)
 - runtime discovery of tools and agents on every API interaction
 - streaming chat/tool/progress events to the UI
@@ -83,7 +84,8 @@ class MyAgent(AgentModule):
     description = "What it does"
     system_prompt = "How it should behave"
     tools = ("get_current_utc_time", "search_skills")  # tool names from global registry
-    skills_dir = "general"  # resolves to workspace/skills/general
+    skill_scopes = ("general", "support")
+    always_on_skills = ("general.persona",)
 ```
 
 ## Authoring Tools
@@ -110,8 +112,47 @@ Examples:
 - `workspace/skills/general/product.md`
 - `workspace/skills/support/triage.md`
 
-Agents can point `skills_dir` at a subdirectory such as `general` or `support`.
-The shared skill tools (`search_skills`, `list_skill_files`, `read_skill_file`) search the full `workspace/skills/` tree.
+Skill ids come from the directory hierarchy under `workspace/skills/`:
+
+- `workspace/skills/general/product.md` -> `general.product`
+- `workspace/skills/support/triage.md` -> `support.triage`
+
+Each skill file should start with frontmatter:
+
+```md
+---
+title: Support Triage Workflow
+type: workflow
+summary: First-response and escalation workflow for support issues.
+tags: [support, triage, escalation]
+triggers: [issue, production, troubleshoot]
+mode: auto
+priority: 80
+requires_tools: [search_skills]
+---
+```
+
+Supported skill `type` values:
+
+- `persona`
+- `policy`
+- `workflow`
+- `knowledge`
+
+Supported `mode` values:
+
+- `always_on`
+- `auto`
+- `manual`
+
+Agents now declare `skill_scopes` instead of pointing at one folder. The runtime:
+
+- filters skills by scope
+- always loads `always_on` skills in that scope, plus any explicit `always_on_skills`
+- chooses additional skills per request using metadata + lexical matching
+- injects summaries first and only adds detailed excerpts for the top matches
+
+The shared skill tools (`search_skills`, `list_skill_files`, `read_skill_file`) still exist as fallback/debug tools over the full `workspace/skills/` tree.
 
 ## Registry
 
@@ -119,18 +160,21 @@ Everything can be looked up by type and name:
 
 ```python
 from core.interfaces.agent import Agent
+from core.interfaces.skills import SkillDefinition
 from core.interfaces.tools import ToolDefinition
 from core.registry import Register
 
 agent = Register.get(Agent, "My Agent")
 utc_tool = Register.get(ToolDefinition, "get_current_utc_time")
+support_skill = Register.get(SkillDefinition, "support.triage")
 ```
 
 ## Runtime Discovery
 
 Discovery is separate from registry:
 
-- `core/discovery.py` loads modules from `workspace/tools/` and `workspace/agents/`
+- `core/discovery.py` loads skill files from `workspace/skills/` and modules from `workspace/tools/` and `workspace/agents/`
+- skill ids come from the file path under `workspace/skills/`
 - agent ids come from the module path under `workspace/agents/`
 - tool modules are loaded first so agent definitions can reference shared tools by name
 - `core/platform.py` refreshes discovery, updates registry, and rebuilds runtimes as needed
