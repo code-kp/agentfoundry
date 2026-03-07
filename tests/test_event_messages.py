@@ -26,6 +26,7 @@ class EventMessagesTest(unittest.TestCase):
         chunks = [
             SkillChunk(
                 chunk_id="billing:1",
+                skill_id="billing",
                 source="billing.md",
                 heading="Refunds",
                 text="Refunds are allowed within 14 days.",
@@ -33,6 +34,7 @@ class EventMessagesTest(unittest.TestCase):
             ),
             SkillChunk(
                 chunk_id="billing:2",
+                skill_id="billing",
                 source="billing.md",
                 heading="Invoices",
                 text="Invoices are emailed automatically.",
