@@ -4,7 +4,7 @@ from pathlib import Path
 
 from core.discovery import DiscoveryService
 from core.contracts.skills import SkillDefinition
-from core.contracts.tools import ToolDefinition
+from core.contracts.tools import ToolDefinition, ensure_tools
 from core.registry import Register
 
 
@@ -37,11 +37,15 @@ Confirm the issue, environment, and recent changes.
             self._write(
                 workspace_root / "tools" / "system.py",
                 """
-from core.contracts.tools import tool
+from core.contracts.tools import ToolModule, register_tool_class
 
-@tool(name="shared_ping", description="Simple ping tool.")
-def shared_ping() -> dict:
-    return {"ok": True}
+@register_tool_class
+class SharedPingTool(ToolModule):
+    name = "shared_ping"
+    description = "Simple ping tool."
+
+    def run(self) -> dict:
+        return {"ok": True}
 """.strip(),
             )
             self._write(workspace_root / "agents" / "__init__.py", "")
@@ -70,7 +74,7 @@ class OpsBot(AgentModule):
             self.assertIn("support.triage", discovered_skills)
             self.assertIn("ops.bot", discovered)
             definition = discovered["ops.bot"].definition
-            self.assertEqual(definition.tools[0].name, "shared_ping")
+            self.assertEqual([tool.name for tool in ensure_tools(definition.tools)], ["search_skills", "shared_ping"])
             self.assertEqual(Register.get(ToolDefinition, "shared_ping").name, "shared_ping")
             self.assertEqual(Register.get(SkillDefinition, "support.triage").title, "Support Triage")
 

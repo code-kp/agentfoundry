@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 from api import _parse_sse_frame
 from core.contracts.agent import Agent
+from core.contracts.execution import DEFAULT_EXECUTION_CONFIG
 from core.stream.progress import EventStream
 from core.skills.resolver import ResolvedSkillContext
 from core.runtime import AgentRecord, AgentRuntime
@@ -120,29 +121,19 @@ class RuntimeGuardrailsTest(unittest.IsolatedAsyncioTestCase):
             "resolved_skills_test",
             default=ResolvedSkillContext(),
         )
-        runtime._preflight_results = contextvars.ContextVar(
-            "preflight_results_test",
-            default=(),
+        runtime._tool_guardrails = contextvars.ContextVar(
+            "tool_guardrails_test",
+            default=None,
         )
         runtime.skill_store = None
         runtime.skill_resolver = object()
         runtime._session_service = object()
         runtime._session_keys = set()
+        runtime.execution = DEFAULT_EXECUTION_CONFIG
         runtime.agent = object()
         runtime.runner = _NeverRespondingRunner()
         runtime.ensure_session = AsyncMock(return_value=None)
         runtime._resolve_skills = lambda query, user_id: ResolvedSkillContext()
-        runtime._plan_tool_execution = lambda message, resolved_context: type(
-            "Plan",
-            (),
-            {"intent": type("Intent", (), {
-                "is_temporal": False,
-                "asks_for_exact_time": False,
-                "needs_public_web": False,
-                "should_anchor_to_current_time": False,
-                "reasons": (),
-            })(), "preflight_calls": ()},
-        )()
         return runtime
 
     async def _collect_events(self, stream: EventStream):

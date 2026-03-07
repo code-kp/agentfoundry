@@ -12,7 +12,7 @@ from workspace.tools.web_tools import (
 
 
 class WebToolsTest(unittest.TestCase):
-    @patch("core.policies.search_strategy.datetime")
+    @patch("workspace.tools.web_search_strategy.datetime")
     def test_build_effective_query_appends_current_date_for_time_sensitive_queries(self, mock_datetime) -> None:
         mock_now = mock_datetime.now.return_value
         mock_now.astimezone.return_value = mock_now
@@ -26,7 +26,7 @@ class WebToolsTest(unittest.TestCase):
         self.assertEqual(temporal_context["current_date"], "March 7 2026")
         self.assertTrue(temporal_context["time_sensitive"])
 
-    @patch("core.policies.search_strategy.datetime")
+    @patch("workspace.tools.web_search_strategy.datetime")
     def test_build_effective_query_keeps_non_temporal_query_unchanged(self, mock_datetime) -> None:
         mock_now = mock_datetime.now.return_value
         mock_now.astimezone.return_value = mock_now
