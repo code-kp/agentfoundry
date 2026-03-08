@@ -324,9 +324,19 @@ Tests:
 """
 ```
 
-The `Related Tests` controller keeps all test files under [`tests/`](./tests) and resolves only the declared files for the selected source module. Test execution still uses `pytest`, which will collect the existing `unittest.TestCase` suites. The workspace settings point VS Code at `.venv/bin/python` so both the Python extension and the related-test controller use the same interpreter by default.
+The `Related Tests` controller follows the active Python file in the editor and resolves only the declared files for that module.
 
-The main Testing-pane refresh remains global. To refresh one selected module in the related-tests tree, use `Refresh Related Tests` on that source item.
+Available profiles:
+- `Run`
+  - executes the related files through `pytest`
+- `Debug`
+  - launches the related files under the Python debugger
+- `Coverage`
+  - runs the related files through `coverage.py` and publishes file coverage into VS Code
+
+The controller reuses the configured workspace interpreter when available and otherwise falls back to `.venv/bin/python` or `python3`. The coverage profile requires `coverage` to be installed in the interpreter that gets selected.
+
+Switch editors to change the displayed module. To refresh the active source item after editing its metadata, use `Refresh Related Tests` on that source item.
 
 To install the local VS Code extension source into your user extensions directory:
 
