@@ -24,13 +24,13 @@ Framework-style platform for creating and running custom agents with:
 core/
   contracts/
   builtin_tools/
+  execution/
   skills/
   stream/
   guardrails.py
   discovery.py
   platform.py
   registry.py
-  runtime/
 workspace/
   agents/               # agent modules; directories become namespaces
   tools/                # shared tool modules; loaded before agents
@@ -105,6 +105,23 @@ Best practice:
 - use `always_on_skills` only for small persona/policy instructions
 - rely on implicit framework tools like `search_skills` instead of listing them on every agent
 - let the model decide whether tools are needed; use `execution` only for guardrails like tool-call budgets
+- use `hooks` for agent-specific prompt additions or final response shaping instead of pushing those behaviors into `core`
+
+If you want the framework to drive an explicit `plan -> execute -> replan -> verify` loop, use `OrchestratedAgentModule` instead:
+
+```python
+from core.contracts.agent import OrchestratedAgentModule, register_orchestrated_agent_class
+from core.contracts.execution import ExecutionConfig
+
+
+@register_orchestrated_agent_class
+class ResearchAgent(OrchestratedAgentModule):
+    name = "Research Agent"
+    description = "Plans, executes, replans, and verifies before answering."
+    system_prompt = "Answer thoroughly and verify important claims."
+    tools = ("get_current_utc_time", "search_web", "fetch_web_page")
+    execution = ExecutionConfig(max_tool_calls=8, max_replans=3, max_verification_rounds=2)
+```
 
 ## Authoring Tools
 

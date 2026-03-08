@@ -100,7 +100,14 @@ class WebToolsTest(unittest.TestCase):
 
         self.assertEqual(detail, "Opening example.com to pull the relevant details.")
 
-    def test_build_search_queries_generates_multiple_variants_for_temporal_query(self) -> None:
+    @patch("workspace.tools.web_search_strategy.datetime")
+    def test_build_search_queries_generates_multiple_variants_for_temporal_query(self, mock_datetime) -> None:
+        mock_now = mock_datetime.now.return_value
+        mock_now.astimezone.return_value = mock_now
+        mock_now.strftime.return_value = "March"
+        mock_now.day = 7
+        mock_now.year = 2026
+
         queries = _build_search_queries(
             original_query="latest OpenAI news",
             effective_query="latest OpenAI news March 7 2026",
