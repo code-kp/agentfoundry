@@ -26,6 +26,16 @@ class _NeverRespondingRunner:
             yield None
 
 
+class _FailingRunner:
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+    async def run_async(self, **kwargs):
+        raise RuntimeError(self.message)
+        if False:
+            yield None
+
+
 class _StreamingRunner:
     def __init__(self) -> None:
         self.last_kwargs = None
@@ -117,11 +127,10 @@ class DirectRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("run_started", event_types)
         self.assertIn("model_started", event_types)
         self.assertIn("thinking_step", event_types)
-        self.assertEqual(event_types[-2], "assistant_message")
         self.assertEqual(event_types[-1], "error")
         self.assertEqual(events[-1]["error"], "model_timeout")
-        self.assertIn("Timed out waiting for", events[-2]["text"])
         self.assertIn("Timed out waiting for", events[-1]["message"])
+        self.assertNotIn("assistant_message", event_types)
 
     async def test_stream_false_buffers_answer_until_final_message(self) -> None:
         runtime = self._build_runtime()
@@ -208,6 +217,52 @@ class DirectRuntimeTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("MODEL_NAME", error_event["message"])
         self.assertIn("env-model", error_event["message"])
         self.assertIn("gemini-2.0-flash", error_event["message"])
+
+    def test_model_name_uses_litellm_prefix_when_backend_env_requests_it(self) -> None:
+        runtime = self._build_runtime()
+        runtime.definition = Agent(
+            name="General Assistant",
+            description="Test agent",
+            system_prompt="Test prompt",
+            tools=(),
+            model=None,
+        )
+
+        with patch.dict(
+            os.environ,
+            {"MODEL_NAME": "openai/gpt-4o-mini", "MODEL_BACKEND": "litellm"},
+            clear=False,
+        ):
+            model_name, source = runtime._resolve_model_name()
+
+        self.assertEqual(model_name, "litellm:openai/gpt-4o-mini")
+        self.assertEqual(source, "env")
+
+    async def test_model_provider_error_is_sanitized_and_not_sent_as_assistant_message(self) -> None:
+        runtime = self._build_runtime()
+        runtime.runner = _FailingRunner(
+            "Failed to load vertex credentials. Your default credentials were not found."
+        )
+        runtime.model_name = "litellm:gemini/gemini-2.0-flash"
+        stream = EventStream()
+
+        with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}, clear=False):
+            await runtime._run_chat(
+                stream=stream,
+                message="Hello",
+                user_id="test-user",
+                session_id="session-6",
+            )
+
+        events = await self._collect_events(stream)
+        event_types = [event["type"] for event in events]
+        error_event = events[-1]
+
+        self.assertNotIn("assistant_message", event_types)
+        self.assertEqual(error_event["type"], "error")
+        self.assertEqual(error_event["error"], "model_error")
+        self.assertIn("Google AI Studio", error_event["message"])
+        self.assertNotIn("Traceback", error_event["message"])
 
     def _build_runtime(self) -> DirectAgentRuntime:
         runtime = object.__new__(DirectAgentRuntime)
