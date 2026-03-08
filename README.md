@@ -202,6 +202,11 @@ Within `behavior`, two common patterns are:
   - rules and boundaries the agent should follow
   - examples: do not invent status, distinguish facts from assumptions, require verification before making commitments
 
+`workflow` is not a separate skill class.
+
+- if the file describes a process or operating procedure, put it under `knowledge`
+- examples: refund workflow, incident triage workflow, onboarding checklist
+
 Best practice:
 - use a heading and normal markdown content
 - let the framework infer title and summary
