@@ -13,7 +13,7 @@ class _FinalizeHook(contracts_hooks.AgentHooks):
         return "[final]{text}".format(text=text)
 
 
-class _FakeWriterAgent:
+class _WriterAgentStub:
     name = "writer-agent"
 
     async def run_async(self, ctx):
@@ -35,7 +35,7 @@ class OrchestratedWriterTest(unittest.IsolatedAsyncioTestCase):
     async def test_stream_writer_relays_partial_and_final_events(self) -> None:
         controller = orchestrated_controller.OrchestratedController.model_construct(
             name="controller",
-            writer_agent=_FakeWriterAgent(),
+            writer_agent=_WriterAgentStub(),
             agent_hooks=_FinalizeHook(),
         )
 
