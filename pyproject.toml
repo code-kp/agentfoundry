@@ -34,10 +34,11 @@ namespaces = true
 backend = "uvicorn server:app --reload --reload-dir . --reload-include '*.py' --reload-exclude 'frontend/*' --reload-exclude '.venv/*' --reload-exclude '*/.venv/*' --reload-exclude 'venv/*' --reload-exclude '*/venv/*' --reload-exclude '*site-packages/*' --reload-exclude '__pycache__/*' --host 127.0.0.1 --port 8000"
 frontend-install = "npm --prefix frontend install"
 frontend = "npm --prefix frontend run dev -- --host 127.0.0.1 --port 3000"
+install-related-tests-extension = "uv run python scripts/install_related_tests_extension.py"
 format = "ruff format ."
 test = "uv run python -m pytest"
-stop = "zsh scripts/stop-dev.sh"
-dev = { shell = "poe backend & BACKEND_PID=$!; poe frontend & FRONTEND_PID=$!; trap 'zsh scripts/stop-dev.sh >/dev/null 2>&1 || true; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true' INT TERM EXIT; wait" }
+stop = "uv run python scripts/dev_supervisor.py stop"
+dev = "uv run python scripts/dev_supervisor.py run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
