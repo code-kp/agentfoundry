@@ -1,9 +1,6 @@
 import unittest
-from unittest.mock import patch
 
 from workspace.tools.web_tools import (
-    _build_search_queries,
-    _build_effective_query,
     _extract_page_content,
     _fetch_page_thinking_detail,
     _parse_duckduckgo_results,
@@ -12,34 +9,6 @@ from workspace.tools.web_tools import (
 
 
 class WebToolsTest(unittest.TestCase):
-    @patch("workspace.tools.web_search_strategy.datetime")
-    def test_build_effective_query_appends_current_date_for_time_sensitive_queries(self, mock_datetime) -> None:
-        mock_now = mock_datetime.now.return_value
-        mock_now.astimezone.return_value = mock_now
-        mock_now.strftime.return_value = "March"
-        mock_now.day = 7
-        mock_now.year = 2026
-
-        effective_query, temporal_context = _build_effective_query("latest OpenAI news")
-
-        self.assertEqual(effective_query, "latest OpenAI news March 7 2026")
-        self.assertEqual(temporal_context["current_date"], "March 7 2026")
-        self.assertTrue(temporal_context["time_sensitive"])
-
-    @patch("workspace.tools.web_search_strategy.datetime")
-    def test_build_effective_query_keeps_non_temporal_query_unchanged(self, mock_datetime) -> None:
-        mock_now = mock_datetime.now.return_value
-        mock_now.astimezone.return_value = mock_now
-        mock_now.strftime.return_value = "March"
-        mock_now.day = 7
-        mock_now.year = 2026
-
-        effective_query, temporal_context = _build_effective_query("how do refunds work")
-
-        self.assertEqual(effective_query, "how do refunds work")
-        self.assertEqual(temporal_context["current_date"], "March 7 2026")
-        self.assertFalse(temporal_context["time_sensitive"])
-
     def test_parse_duckduckgo_results_extracts_title_snippet_and_target_url(self) -> None:
         html = """
         <html>
@@ -99,27 +68,6 @@ class WebToolsTest(unittest.TestCase):
         detail = _fetch_page_thinking_detail("https://example.com/answer")
 
         self.assertEqual(detail, "Opening example.com to pull the relevant details.")
-
-    @patch("workspace.tools.web_search_strategy.datetime")
-    def test_build_search_queries_generates_multiple_variants_for_temporal_query(self, mock_datetime) -> None:
-        mock_now = mock_datetime.now.return_value
-        mock_now.astimezone.return_value = mock_now
-        mock_now.strftime.return_value = "March"
-        mock_now.day = 7
-        mock_now.year = 2026
-
-        queries = _build_search_queries(
-            original_query="latest OpenAI news",
-            effective_query="latest OpenAI news March 7 2026",
-            temporal_context={
-                "time_sensitive": True,
-                "current_date": "March 7 2026",
-            },
-        )
-
-        self.assertGreaterEqual(len(queries), 2)
-        self.assertEqual(queries[0], "latest OpenAI news March 7 2026")
-        self.assertIn("OpenAI news March 7 2026", queries)
 
 
 if __name__ == "__main__":

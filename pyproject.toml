@@ -11,6 +11,7 @@ dependencies = [
   "python-dotenv>=1.0.1",
   "python-multipart>=0.0.9",
   "poethepoet>=0.32.0",
+  "pytest>=8.3.5",
 ]
 
 [build-system]
@@ -27,9 +28,14 @@ exclude = ["frontend*", "tests*"]
 namespaces = true
 
 [tool.poe.tasks]
-backend = "uvicorn server:app --reload --reload-dir core --reload-dir workspace --reload-include '*.py' --reload-exclude 'frontend/*' --reload-exclude '.venv/*' --reload-exclude '*/.venv/*' --reload-exclude 'venv/*' --reload-exclude '*/venv/*' --reload-exclude '*site-packages/*' --reload-exclude '__pycache__/*' --host 127.0.0.1 --port 8000"
+backend = "uvicorn server:app --reload --reload-dir . --reload-include '*.py' --reload-exclude 'frontend/*' --reload-exclude '.venv/*' --reload-exclude '*/.venv/*' --reload-exclude 'venv/*' --reload-exclude '*/venv/*' --reload-exclude '*site-packages/*' --reload-exclude '__pycache__/*' --host 127.0.0.1 --port 8000"
 frontend-install = "npm --prefix frontend install"
 frontend = "npm --prefix frontend run dev -- --host 127.0.0.1 --port 3000"
-test = "python3 -m unittest discover -s tests -p 'test_*.py' -v"
+test = "uv run python -m pytest"
 stop = "zsh scripts/stop-dev.sh"
 dev = { shell = "poe backend & BACKEND_PID=$!; poe frontend & FRONTEND_PID=$!; trap 'zsh scripts/stop-dev.sh >/dev/null 2>&1 || true; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true' INT TERM EXIT; wait" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["--import-mode=importlib"]
