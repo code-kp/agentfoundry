@@ -2,18 +2,44 @@ import React, { useEffect, useRef } from "react";
 
 import { MessageItem } from "./MessageItem";
 
+function getActiveExecutionMessage(messages) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === "assistant" && message.thinkingActive) {
+      return message;
+    }
+  }
+
+  return null;
+}
+
+function scrollContainerToAnchor(container, anchor, behavior = "smooth") {
+  const containerRect = container.getBoundingClientRect();
+  const anchorRect = anchor.getBoundingClientRect();
+  const focusOffset = Math.min(112, Math.max(32, container.clientHeight * 0.18));
+  const nextTop = container.scrollTop + (anchorRect.top - containerRect.top) - focusOffset;
+
+  container.scrollTo({
+    top: Math.max(0, nextTop),
+    behavior,
+  });
+}
+
 export function MessageList({ messages, agentName, agentDescription }) {
   const listRef = useRef(null);
+  const initialActiveExecution = getActiveExecutionMessage(messages);
+  const activeExecutionMessage = getActiveExecutionMessage(messages);
   const previousSnapshotRef = useRef({
     count: messages.length,
     lastId: messages[messages.length - 1]?.id || null,
     lastText: messages[messages.length - 1]?.text || "",
     lastStreaming: Boolean(messages[messages.length - 1]?.streaming),
+    activeExecutionId: initialActiveExecution?.id || null,
   });
 
   useEffect(() => {
     if (!listRef.current) {
-      return;
+      return undefined;
     }
 
     const lastMessage = messages[messages.length - 1] || null;
@@ -22,8 +48,59 @@ export function MessageList({ messages, agentName, agentDescription }) {
       lastId: lastMessage?.id || null,
       lastText: lastMessage?.text || "",
       lastStreaming: Boolean(lastMessage?.streaming),
+      activeExecutionId: activeExecutionMessage?.id || null,
     };
     const previousSnapshot = previousSnapshotRef.current;
+
+    if (activeExecutionMessage) {
+      if (snapshot.activeExecutionId !== previousSnapshot.activeExecutionId) {
+        let settleTimeoutId = 0;
+        const frameId = window.requestAnimationFrame(() => {
+          if (!listRef.current) {
+            return;
+          }
+
+          const focusAnchor = (behavior = "smooth") => {
+            if (!listRef.current) {
+              return;
+            }
+
+            const anchor = listRef.current.querySelector(
+              `[data-message-id="${activeExecutionMessage.id}"] [data-execution-anchor="true"]`,
+            );
+
+            if (anchor) {
+              scrollContainerToAnchor(listRef.current, anchor, behavior);
+            }
+          };
+
+          focusAnchor("smooth");
+          settleTimeoutId = window.setTimeout(() => {
+            focusAnchor("smooth");
+          }, 180);
+        });
+
+        previousSnapshotRef.current = snapshot;
+        return () => {
+          window.cancelAnimationFrame(frameId);
+          window.clearTimeout(settleTimeoutId);
+        };
+      }
+
+      previousSnapshotRef.current = snapshot;
+      return undefined;
+    }
+
+    if (previousSnapshot.activeExecutionId && !snapshot.activeExecutionId) {
+      listRef.current.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+
+      previousSnapshotRef.current = snapshot;
+      return undefined;
+    }
+
     const shouldScroll =
       snapshot.count !== previousSnapshot.count
       || snapshot.lastId !== previousSnapshot.lastId
@@ -40,6 +117,7 @@ export function MessageList({ messages, agentName, agentDescription }) {
     }
 
     previousSnapshotRef.current = snapshot;
+    return undefined;
   }, [messages]);
 
   if (!messages.length) {
@@ -58,6 +136,7 @@ export function MessageList({ messages, agentName, agentDescription }) {
   return (
     <div className="message-list" ref={listRef}>
       {messages.map((message) => <MessageItem key={message.id} message={message} />)}
+      {activeExecutionMessage ? <div className="message-focus-spacer" aria-hidden="true" /> : null}
     </div>
   );
 }

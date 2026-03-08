@@ -61,6 +61,10 @@ function isSafeHref(href) {
   return /^(https?:\/\/|mailto:|\/)/i.test(href);
 }
 
+function isCitationLabel(label) {
+  return /^\d+$/.test(String(label || "").trim());
+}
+
 function pushTextNodes(target, text, keyPrefix) {
   const parts = text.split("\n");
 
@@ -99,14 +103,19 @@ function parseInline(text, keyPrefix = "md") {
     if (match[2] && match[3]) {
       const href = match[3];
       if (isSafeHref(href)) {
+        const label = String(match[2] || "").trim();
+        const isCitation = isCitationLabel(label);
         output.push(
           <a
             key={`${keyPrefix}-link-${tokenIndex}`}
+            className={isCitation ? "markdown-citation" : undefined}
+            aria-label={isCitation ? `Source ${label}` : undefined}
+            data-citation={isCitation ? label : undefined}
             href={href}
             target={href.startsWith("/") ? undefined : "_blank"}
             rel={href.startsWith("/") ? undefined : "noreferrer"}
           >
-            {parseInline(match[2], `${keyPrefix}-link-label-${tokenIndex}`)}
+            {isCitation ? label : parseInline(match[2], `${keyPrefix}-link-label-${tokenIndex}`)}
           </a>,
         );
       } else {

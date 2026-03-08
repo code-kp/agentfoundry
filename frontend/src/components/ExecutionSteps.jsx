@@ -44,11 +44,7 @@ export function ExecutionSteps({ events, active }) {
   const previousEventCountRef = useRef(events.length);
   const latestEvent = events[events.length - 1] || null;
   const recentEvents = events.slice(-4);
-  const visibleEvents = expanded ? events : recentEvents;
   const hiddenCount = Math.max(events.length - recentEvents.length, 0);
-  const backgroundEvents = events.slice(0, -1);
-  const visibleBackgroundEvents = backgroundEvents.slice(-6);
-  const hiddenBackgroundCount = Math.max(backgroundEvents.length - visibleBackgroundEvents.length, 0);
   const latestSummary = getEventSummary(latestEvent);
   const showPanel = active || expanded || isSettling || isCollapsing;
   const showFocusedLayout = active || isSettling || isCollapsing;
@@ -108,13 +104,18 @@ export function ExecutionSteps({ events, active }) {
       return;
     }
 
-    const behavior = active && previousEventCountRef.current > 0 ? "smooth" : "auto";
+    if (showFocusedLayout && !events.length) {
+      previousEventCountRef.current = events.length;
+      return;
+    }
+
+    const behavior = showFocusedLayout && previousEventCountRef.current > 0 ? "smooth" : "auto";
     listRef.current.scrollTo({
       top: listRef.current.scrollHeight,
       behavior,
     });
     previousEventCountRef.current = events.length;
-  }, [active, events.length, showPanel]);
+  }, [events.length, showFocusedLayout, showPanel]);
 
   useEffect(() => {
     if (active) {
@@ -169,12 +170,10 @@ export function ExecutionSteps({ events, active }) {
                   : "Execution complete"
                 : "Execution steps"}
             </span>
-            {!showFocusedLayout ? (
-              <div className="execution-summary">
-                <strong>{events.length} steps captured</strong>
-                <span>{latestSummary || "Response completed."}</span>
-              </div>
-            ) : null}
+            <div className="execution-summary">
+              <strong>{showFocusedLayout ? currentHeading : `${events.length} steps captured`}</strong>
+              <span>{showFocusedLayout ? currentSummary : latestSummary || "Response completed."}</span>
+            </div>
           </div>
           {!showFocusedLayout ? (
             <button
@@ -192,79 +191,26 @@ export function ExecutionSteps({ events, active }) {
           )}
         </header>
 
-        {showFocusedLayout ? (
-          <>
-            <section className={active ? "execution-current live" : "execution-current"}>
-              <div
-                key={latestEvent?.id || (active ? "pending" : "complete")}
-                className="execution-current-body"
-              >
-                <div className="execution-current-topline">
-                  <span className="execution-current-kicker">
-                    <span className="execution-current-indicator" aria-hidden="true" />
-                    {active ? "Current activity" : "Latest activity"}
-                  </span>
-                  <time dateTime={toDateTimeAttr(latestEvent?.timestamp)}>
-                    {formatTime(latestEvent?.timestamp, { withSeconds: true })}
-                  </time>
-                </div>
-                <strong>{currentHeading}</strong>
-                <p>{currentSummary}</p>
+        <ol
+          className={showFocusedLayout ? "execution-list live" : "execution-list"}
+          ref={listRef}
+        >
+          {showFocusedLayout && !events.length ? (
+            <li className="execution-item live pending">
+              <div className="execution-rail" aria-hidden="true">
+                <span className="execution-node" />
               </div>
-            </section>
-
-            {visibleBackgroundEvents.length ? (
-              <div className="execution-history">
-                <div className="execution-history-header">
-                  <span>Recent updates</span>
-                  {hiddenBackgroundCount > 0 ? (
-                    <span>{hiddenBackgroundCount} earlier</span>
-                  ) : null}
+              <div className="execution-step">
+                <div className="execution-step-header">
+                  <strong>Starting request</strong>
                 </div>
-
-                <ol className="execution-list live" ref={listRef}>
-                  {visibleBackgroundEvents.map((event, index) => {
-                    const absoluteIndex = backgroundEvents.length - visibleBackgroundEvents.length + index;
-                    const isLatest = absoluteIndex === backgroundEvents.length - 1;
-                    const isError = event.state === "error" || event.type === "error";
-                    const preview = getEventSummary(event);
-
-                    return (
-                      <li
-                        key={event.id}
-                        className={[
-                          "execution-item",
-                          isLatest ? "latest" : "",
-                          isError ? "error" : "",
-                        ].filter(Boolean).join(" ")}
-                      >
-                        <div className="execution-rail" aria-hidden="true">
-                          <span className="execution-node" />
-                          {absoluteIndex < backgroundEvents.length - 1 ? <span className="execution-line" /> : null}
-                        </div>
-                        <div className="execution-step">
-                          <div className="execution-step-header">
-                            <strong>{getEventHeading(event)}</strong>
-                            <time dateTime={toDateTimeAttr(event.timestamp)}>
-                              {formatTime(event.timestamp, { withSeconds: true })}
-                            </time>
-                          </div>
-                          {preview ? <p className="execution-preview">{preview}</p> : null}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
+                <p className="execution-preview">Connecting to the selected agent and waiting for the first progress update.</p>
               </div>
-            ) : null}
-          </>
-        ) : (
-          <ol
-            className="execution-list"
-            ref={listRef}
-          >
-            {visibleEvents.map((event, index) => {
-              const absoluteIndex = expanded ? index : events.length - visibleEvents.length + index;
+            </li>
+          ) : (showFocusedLayout ? events : (expanded ? events : recentEvents)).map((event, index, list) => {
+              const absoluteIndex = showFocusedLayout || expanded
+                ? index
+                : events.length - list.length + index;
               const isLatest = absoluteIndex === events.length - 1;
               const isError = event.state === "error" || event.type === "error";
               const preview = getEventSummary(event);
@@ -276,11 +222,12 @@ export function ExecutionSteps({ events, active }) {
                     "execution-item",
                     isLatest ? "latest" : "",
                     isError ? "error" : "",
-                  ].filter(Boolean).join(" ")}
+                    active && isLatest ? "live" : "",
+                ].filter(Boolean).join(" ")}
                 >
                   <div className="execution-rail" aria-hidden="true">
                     <span className="execution-node" />
-                    {absoluteIndex < events.length - 1 ? <span className="execution-line" /> : null}
+                    {index < list.length - 1 ? <span className="execution-line" /> : null}
                   </div>
                   <div className="execution-step">
                     <div className="execution-step-header">
@@ -295,8 +242,7 @@ export function ExecutionSteps({ events, active }) {
                 </li>
               );
             })}
-          </ol>
-        )}
+        </ol>
 
         {!showFocusedLayout && !expanded && hiddenCount > 0 ? (
           <button

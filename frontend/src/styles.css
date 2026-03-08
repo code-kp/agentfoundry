@@ -867,6 +867,11 @@ time {
   padding: 16px 20px 12px;
 }
 
+.message-focus-spacer {
+  height: clamp(120px, 22vh, 220px);
+  pointer-events: none;
+}
+
 .conversation-empty {
   min-height: 100%;
   padding: 32px 20px;
@@ -1040,6 +1045,30 @@ time {
   text-decoration: none;
 }
 
+.message-body a.markdown-citation {
+  display: inline-block;
+  margin-left: 0.14rem;
+  color: var(--text-soft);
+  font-size: 0.68em;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: super;
+  text-decoration: none;
+}
+
+.message-body a.markdown-citation::before {
+  content: "[";
+}
+
+.message-body a.markdown-citation::after {
+  content: "]";
+}
+
+.message-body a.markdown-citation:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
 .message-body a:hover {
   text-decoration: underline;
 }
@@ -1103,6 +1132,10 @@ time {
 .execution-steps {
   display: grid;
   gap: 0;
+}
+
+.execution-focus-anchor {
+  scroll-margin-top: 12px;
 }
 
 .execution-steps + .message-body {
@@ -1225,9 +1258,10 @@ time {
 }
 
 .execution-list.live {
-  min-height: 124px;
-  max-height: 212px;
+  min-height: 176px;
+  max-height: 248px;
   padding-right: 8px;
+  scroll-padding-bottom: 12px;
 }
 
 .execution-current {
