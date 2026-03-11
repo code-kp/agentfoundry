@@ -1,366 +1,124 @@
-# Agent Platform
+# Agent Hub
 
-Framework-style platform for creating and running custom agents with:
+Agent Hub is a framework-style platform for building, running, and iterating on custom agents without having to hand-roll agent wiring, runtime orchestration, or UI integration from scratch.
 
-- strict separation of `src/core/` platform runtime and `src/workspace/` creator content
-- one shared workspace for agents, tools, and skills
-- class-based agent authoring API
-- folder-based skill discovery with explicit behavior/knowledge assignment
-- global typed registry (`Register.get(Type, name)`)
-- runtime discovery of tools and agents on every API interaction
-- streaming chat/tool/progress events to the UI
+It gives you a stable runtime in `src/core/`, a shared authoring workspace in `src/workspace/`, a FastAPI backend, and a React UI. The main goal is to reduce the complexity of defining agents and tools: you add an agent, tool, or markdown skill in the workspace, and the platform discovers it and makes it available through the API and UI.
+
+## Features
+
+- Simple agent authoring with Python classes and a shared contract layer.
+- Simple tool authoring with explicit metadata and live progress events.
+- Markdown-based skills for reusable behavior and knowledge.
+- Runtime discovery of workspace agents, tools, and skills.
+- Direct and orchestrated execution modes.
+- Streaming assistant, tool, and thinking events in the UI.
+- Shared conversation persistence and user-scoped uploaded knowledge.
 
 ## Documentation
 
-- [Core architecture](./src/core/README.md)
-  - what each core module does
-  - where discovery, runtime, execution guardrails, skill resolution, and streaming logic belong
-- [Workspace authoring](./src/workspace/README.md)
-  - how to define agents, tools, and skills in the shared workspace
+- [PROJECT.md](./PROJECT.md) for the higher-level project overview and repository layout.
+- [src/core/README.md](./src/core/README.md) for core runtime architecture.
+- [src/workspace/README.md](./src/workspace/README.md) for agent, tool, and skill authoring.
 
-## Structure
+## Prerequisites
 
-```text
-src/
-  core/
-    contracts/
-    builtin_tools/
-    execution/
-    skills/
-    stream/
-    guardrails.py
-    discovery.py
-    platform.py
-    registry.py
-  workspace/
-    agents/             # agent modules; directories become namespaces
-    tools/              # shared tool modules; loaded before agents
-    skills/             # shared markdown skills
-  api.py
-  server.py
-frontend/
+- Python 3.9+
+- [`uv`](https://docs.astral.sh/uv/)
+- Node.js 18+
+
+## Environment
+
+Create a repo-root [`.env`](./.env) file.
+
+Required for the default Gemini setup:
+
+```env
+GOOGLE_API_KEY=your_google_ai_studio_key
 ```
 
-## Run
+Optional model overrides:
 
-1. Set `GOOGLE_API_KEY` in `.env`
-2. Install Python dependencies:
+```env
+MODEL_NAME=gemini-3.1-flash-lite-preview
+MODEL_BACKEND=litellm
+```
+
+Notes:
+- `GOOGLE_API_KEY` is required for the default native Gemini path.
+- If you route through LiteLLM, also set the provider-specific key for that model, such as `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`.
+- After changing environment variables, restart `uv run poe dev` or `uv run poe backend`.
+
+## Install
+
+Install Python dependencies:
 
 ```bash
 uv sync --all-groups --all-extras
 ```
 
-3. Install frontend dependencies:
+Install frontend dependencies:
 
 ```bash
 uv run poe frontend-install
 ```
 
-4. Start backend + frontend:
+## How It Works
+
+Agent Hub keeps the framework runtime and the workspace content separate:
+
+- `src/core/` owns discovery, execution, streaming, memory, and platform behavior.
+- `src/workspace/` owns the agents, tools, and skills you define.
+
+That split means contributors can focus on defining agents and tools with the provided contracts instead of wiring their own runtime loop, event streaming, or registry plumbing.
+
+## Run Locally
+
+Start backend + frontend together:
 
 ```bash
 uv run poe dev
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000)
+Stop the dev supervisor:
 
-`poe dev` and `poe stop` use a Python supervisor, so they work across macOS, Linux, and Windows without relying on `zsh`, `lsof`, or shell job control.
-
-## Poe Tasks
-
-- `uv run poe backend`
-- `uv run poe frontend`
-- `uv run poe dev`
-- `uv run poe stop`
-- `uv run poe install-tests-ext`
-
-## Authoring Agents
-
-Create agent modules under:
-
-- `src/workspace/agents/...`
-
-Directories under `src/workspace/agents/` are namespaces. For example:
-
-- `src/workspace/agents/general.py` -> agent id `general`
-- `src/workspace/agents/support/triage.py` -> agent id `support.triage`
-
-Example:
-
-```python
-from core.contracts.agent import AgentModule, register_agent_class
-from core.contracts.execution import ExecutionConfig
-from core.contracts.memory import MemoryConfig
-from core.contracts.models import lite_llm_model
-
-@register_agent_class
-class MyAgent(AgentModule):
-    name = "My Agent"
-    description = "What it does"
-    system_prompt = "How it should behave"
-    tools = ("get_current_utc_time",)  # explicit tools only
-    behavior = ("general.persona",)
-    knowledge = ("general.product", "support.triage")
-    model = lite_llm_model("openai/gpt-4o-mini")  # optional; omit to use the default Gemini model
-    execution = ExecutionConfig(max_tool_calls=6)
-    memory = MemoryConfig(enabled=True, preserve_recent_turns=4, summarize_after_turns=6)
+```bash
+uv run poe stop
 ```
 
-Best practice:
-- keep `system_prompt` focused on behavior and output style
-- keep domain knowledge in skills, not in the prompt
-- use `behavior` for always-on behavior shaping
-- use `knowledge` for retrievable reference material
-- use `model = "gemini-..."` for native ADK/Gemini models
-- use `model = lite_llm_model("provider/model")` or `model = "litellm:provider/model"` for LiteLLM-backed providers
-- when using LiteLLM, the provider must be explicit: `openai/gpt-4o-mini`, `anthropic/claude-3-7-sonnet`, `gemini/gemini-2.0-flash`
-- use `memory` when you want compact follow-up context with lower token growth
-- rely on implicit framework tools like `search_skills` instead of listing them on every agent
-- let the model decide whether tools are needed; use `execution` only for guardrails like tool-call budgets
-- set `execution` when the agent should be eligible for orchestrated runtime; callers can then pass `mode="orchestrated"` or use the UI toggle
-- use `runtime_mode` only to choose the default runtime when callers do not pass `mode`
-- use `hooks` for agent-specific prompt additions or final response shaping instead of pushing those behaviors into `core`
+Run backend only:
 
-Environment overrides:
-- `MODEL_NAME=gemini-2.0-flash` uses a native ADK/Gemini model
-- `MODEL_NAME=openai/gpt-4o-mini` with `MODEL_BACKEND=litellm` uses LiteLLM through ADK
-- `MODEL_NAME=litellm:openai/gpt-4o-mini` also works
-
-If you want the framework to default to an explicit `plan -> execute -> replan -> verify` loop when callers omit `mode`, set `runtime_mode = "orchestrated"` on a normal agent and provide an explicit `ExecutionConfig`:
-
-```python
-from core.contracts.agent import AgentModule, register_agent_class
-from core.contracts.execution import ExecutionConfig
-
-
-@register_agent_class
-class ResearchAgent(AgentModule):
-    name = "Research Agent"
-    description = "Plans, executes, replans, and verifies before answering."
-    system_prompt = "Answer thoroughly and verify important claims."
-    runtime_mode = "orchestrated"
-    tools = ("get_current_utc_time", "search_web", "fetch_web_page")
-    execution = ExecutionConfig(max_tool_calls=8, max_replans=3, max_verification_rounds=2)
+```bash
+uv run poe backend
 ```
 
-`/api/chat/stream` accepts an optional `mode` field with `direct` or `orchestrated`. If omitted, the agent's `runtime_mode` is used as the default.
+Run frontend only:
 
-## Authoring Tools
-
-Put tools under `src/workspace/tools/...` and define them as `ToolModule` classes.
-All tools are loaded before agents, so any agent can reference any tool by name.
-
-Example:
-
-```python
-from core.contracts.tools import ToolModule, register_tool_class
-
-
-@register_tool_class
-class GetCurrentUtcTimeTool(ToolModule):
-    name = "get_current_utc_time"
-    description = "Return UTC time."
-    category = "time"
-    use_when = ("The request asks for current time or date.",)
-    returns = "A UTC timestamp in ISO 8601 format."
-
-    def run(self) -> dict:
-        self.progress.think(
-            "Checking the current time",
-            detail="Confirming the current UTC time.",
-            step_id="get_current_utc_time",
-        )
-        ...
+```bash
+uv run poe frontend
 ```
 
-Best practice:
-- fill in tool metadata well enough that the runtime and model can make good decisions
-- emit `progress.think(...)` for user-facing narration
-- emit `progress.debug(...)` for developer detail
-- keep tool-specific planning with the tool itself; keep only hard execution limits in the framework
+Local URLs:
+- App: [http://127.0.0.1:3000](http://127.0.0.1:3000)
+- API: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 
-Framework-provided common tools:
-- `search_skills` is included automatically for agents by the core toolset
-- agent authors should only list explicit tools that expand the agent's capabilities, such as web search, time, APIs, or side-effecting integrations
+`poe dev` and `poe stop` use the Python supervisor in [`scripts/dev_supervisor.py`](./scripts/dev_supervisor.py), so startup and shutdown do not depend on shell-specific job control.
 
-## Authoring Skills
+## Common Commands
 
-Put markdown skills under one of these folders:
+- Run tests: `uv run poe test`
+- Format code: `uv run poe format`
+- Build frontend: `npm --prefix frontend run build`
+- Install the VS Code Related Tests extension: `uv run poe install-tests-ext`
+
+## CLI Entrypoint
+
+The local API/CLI entrypoint is [`src/api.py`](./src/api.py).
 
 Examples:
 
-- `src/workspace/skills/behavior/general/persona.md`
-- `src/workspace/skills/knowledge/support/triage.md`
-
-Skill ids come from the directory hierarchy under `src/workspace/skills/`:
-
-- `src/workspace/skills/behavior/general/persona.md` -> `general.persona`
-- `src/workspace/skills/knowledge/support/triage.md` -> `support.triage`
-
-There are only two user-facing skill classes:
-
-```md
-# behavior/support/persona.md
-
-# Support Persona
-
-Keep troubleshooting replies concrete and operational.
-```
-
-- `src/workspace/skills/behavior/...`
-  - always-on behavior shaping
-- `src/workspace/skills/knowledge/...`
-  - retrievable knowledge and reference content
-
-Within `behavior`, two common patterns are:
-
-- `persona`
-  - how the agent should sound and behave
-  - examples: be concise, be operational, avoid speculation
-- `policy`
-  - rules and boundaries the agent should follow
-  - examples: do not invent status, distinguish facts from assumptions, require verification before making commitments
-
-`workflow` is not a separate skill class.
-
-- if the file describes a process or operating procedure, put it under `knowledge`
-- examples: refund workflow, incident triage workflow, onboarding checklist
-
-Best practice:
-- use a heading and normal markdown content
-- let the framework infer title and summary
-- keep one skill focused on one concern instead of mixing everything into one file
-- use `behavior` only for guidance that should always shape the agent
-- use `knowledge` for docs, workflows, references, policies, and FAQs
-
-Agents now declare exact skill ids. The runtime:
-
-- always loads `behavior`
-- chooses from `knowledge` per request using lexical matching and chunk selection
-- injects summaries first and only adds detailed excerpts for the top matches
-
-The shared skill tools (`search_skills`, `list_skill_files`, `read_skill_file`) are framework-provided tools in `core/` rather than workspace tools. `search_skills` is available to agents through the default core toolset.
-
-### Uploading Markdown As Skills
-
-Use the backend upload endpoint to turn any markdown file into a skill:
-
 ```bash
-curl -X POST http://127.0.0.1:8000/api/skills/upload \
-  -F "file=@/path/to/refund-faq.md" \
-  -F "user_id=browser-user" \
-  -F "namespace=billing"
+uv run python src/api.py list
+uv run python src/api.py catalog
+uv run python src/api.py chat "summarize the refund policy"
+uv run python src/api.py repl
 ```
-
-Uploaded files are stored under `src/workspace/skills/uploads/...` and are treated as knowledge skills.
-
-That is the recommended default:
-
-- use uploaded knowledge for docs, notes, guides, FAQs, release notes, and product references
-- keep authored `behavior` skills for short, stable instructions that should shape how an agent behaves
-
-`uploads.<user-id>.*` skills are treated as user-scoped shared knowledge and are eligible for all agents only when the chat uses the same `user_id`.
-
-## Registry
-
-Everything can be looked up by type and name:
-
-```python
-from core.contracts.agent import Agent
-from core.contracts.skills import SkillDefinition
-from core.contracts.tools import ToolDefinition
-from core.registry import Register
-
-agent = Register.get(Agent, "My Agent")
-utc_tool = Register.get(ToolDefinition, "get_current_utc_time")
-support_skill = Register.get(SkillDefinition, "support.triage")
-```
-
-## Runtime Discovery
-
-Discovery is separate from registry:
-
-- `src/core/discovery.py` loads skill files from `src/workspace/skills/` and modules from `src/workspace/tools/` and `src/workspace/agents/`
-- skill ids come from the file path under `src/workspace/skills/`
-- agent ids come from the module path under `src/workspace/agents/`
-- tool modules are loaded first so agent definitions can reference shared tools by name
-- `src/core/platform.py` refreshes discovery, updates registry, and rebuilds runtimes as needed
-- `src/core/registry.py` remains a pure typed registry
-
-For the full platform breakdown, use [src/core/README.md](./src/core/README.md).
-
-## API Entrypoint
-
-`src/api.py` is the local interaction entrypoint for agents (programmatic + CLI).
-
-CLI examples:
-
-```bash
-python3 src/api.py list
-python3 src/api.py catalog
-python3 src/api.py chat "summarize the refund policy"
-python3 src/api.py repl
-```
-
-Programmatic examples:
-
-```python
-from api import api
-
-agents = api.list_agents()
-result = await api.chat(message="Hello", agent_id=None)
-streamed_agent, session_id, events = await api.stream_chat_events(
-    message="Hello",
-    agent_id=None,
-    stream=True,
-)
-```
-
-`stream=True` emits incremental `assistant_delta` events as the answer is generated.
-`stream=False` buffers the answer text and emits only the final `assistant_message`, while
-tool/progress events still stream live.
-
-## Verification
-
-```bash
-uv run python -m pytest
-```
-
-## VS Code Related Tests
-
-The workspace now supports two test controllers:
-
-- the normal Python test controller, configured for `pytest`
-- a separate `Related Tests` controller driven by source-file metadata
-
-Related test metadata lives at the top of a source file:
-
-```python
-"""
-Tests:
-- tests/core/test_guardrails.py
-- tests/core/contracts/test_execution.py
-"""
-```
-
-The `Related Tests` controller follows the active Python file in the editor and resolves only the declared files for that module.
-
-Available profiles:
-- `Run`
-  - executes the related files through `pytest`
-- `Debug`
-  - launches the related files under the Python debugger
-- `Coverage`
-  - runs the related files through `coverage.py` and publishes file coverage into VS Code
-
-The controller reuses the configured workspace interpreter when available and otherwise falls back to `.venv/bin/python` or `python3`. The coverage profile requires `coverage` to be installed in the interpreter that gets selected.
-
-Switch editors to change the displayed module. To refresh the active source item after editing its metadata, use `Refresh Related Tests` on that source item.
-
-To install the local VS Code extension source into your user extensions directory:
-
-```bash
-uv run poe install-tests-ext
-```
-
-The extension source lives in [`vscode-related-tests/`](./vscode-related-tests), and its metadata helper lives in [`vscode-related-tests/python/related_tests_metadata.py`](./vscode-related-tests/python/related_tests_metadata.py).
