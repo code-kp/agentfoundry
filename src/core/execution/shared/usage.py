@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import core.contracts.models as contract_models
+
 
 USAGE_COUNT_FIELDS = (
     "prompt_token_count",
@@ -63,7 +65,10 @@ def _usage_call_from_event(event: Any) -> dict[str, Any] | None:
     return {
         "event_id": str(getattr(event, "id", "") or ""),
         "author": str(getattr(event, "author", "") or ""),
-        "model_version": str(getattr(event, "model_version", "") or ""),
+        "model_version": contract_models.public_model_label(
+            getattr(event, "model_version", ""),
+            fallback="",
+        ),
         "interaction_id": str(getattr(event, "interaction_id", "") or ""),
         "input_tokens": prompt_tokens,
         "output_tokens": output_tokens,

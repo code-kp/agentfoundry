@@ -147,6 +147,48 @@ class AgentPlatformTest(unittest.TestCase):
             else:
                 os.environ.pop("MODEL_BACKEND", None)
 
+    def test_refresh_uses_repo_root_dotenv_and_replaces_blank_process_value(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workspace_root = root / "src" / "workspace"
+            workspace_root.mkdir(parents=True)
+            dotenv_path = root / ".env"
+            dotenv_path.write_text('GOOGLE_API_KEY="test-google-key"\n', encoding="utf-8")
+
+            discovered = {
+                "general": DiscoveredAgent(
+                    agent_id="general",
+                    module_name="workspace.agents.general",
+                    project_name="workspace",
+                    project_root=workspace_root,
+                    definition=define_agent(
+                        name="General Assistant",
+                        description="General-purpose assistant.",
+                        system_prompt="Answer clearly.",
+                    ),
+                    fingerprint="general-fingerprint",
+                )
+            }
+
+            with patch(
+                "core.platform.DiscoveryService.discover_skills",
+                return_value={},
+            ), patch(
+                "core.platform.DiscoveryService.discover_agents",
+                return_value=discovered,
+            ), patch(
+                "core.platform.create_agent_runtime",
+                return_value={"runtime": "stub"},
+            ), patch.dict(
+                os.environ,
+                {"GOOGLE_API_KEY": ""},
+                clear=False,
+            ):
+                platform = AgentPlatform(workspace_root)
+
+                self.assertEqual(platform._env_path, dotenv_path)
+                self.assertEqual(os.getenv("GOOGLE_API_KEY"), "test-google-key")
+
 
 if __name__ == "__main__":
     unittest.main()

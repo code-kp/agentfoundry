@@ -273,8 +273,8 @@ class DirectRuntimeTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(error_event["type"], "error")
         self.assertIn("MODEL_NAME", error_event["message"])
-        self.assertIn("env-model", error_event["message"])
-        self.assertIn("gemini-2.0-flash", error_event["message"])
+        self.assertIn("non-default model", error_event["message"])
+        self.assertNotIn("env-model", error_event["message"])
 
     def test_model_name_uses_litellm_prefix_when_backend_env_requests_it(self) -> None:
         runtime = self._build_runtime()

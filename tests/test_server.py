@@ -3,10 +3,25 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
+import core.contracts.models as contract_models
 import server
 
 
 class ServerUploadTest(unittest.TestCase):
+    def test_models_endpoint_returns_catalog(self) -> None:
+        client = TestClient(server.app)
+
+        with patch.object(
+            server.service,
+            "list_available_models",
+            return_value={"models": [{"id": "mdl_demo", "hash": "demo", "label": "Gemini Demo"}]},
+        ) as list_models:
+            response = client.get("/api/models")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["models"][0]["id"], "mdl_demo")
+        list_models.assert_called_once_with()
+
     def test_chat_stream_endpoint_forwards_stream_flag(self) -> None:
         client = TestClient(server.app)
 
@@ -46,6 +61,50 @@ class ServerUploadTest(unittest.TestCase):
         )
         self.assertEqual(response.headers["x-session-id"], "session-1")
         self.assertEqual(response.headers["x-mode"], "orchestrated")
+
+    def test_chat_stream_endpoint_accepts_model_id(self) -> None:
+        client = TestClient(server.app)
+        selected = contract_models.available_models()[0]
+
+        async def fake_stream():
+            yield 'event: assistant_message\ndata: {"text":"done"}\n\n'
+
+        with patch.object(
+            server.service,
+            "resolve_model_name",
+            return_value=selected.model_name,
+        ) as resolve_model_name:
+            with patch.object(
+                server.service,
+                "stream_chat",
+                AsyncMock(
+                    return_value=("web.answer", "direct", "session-2", fake_stream())
+                ),
+            ) as stream_chat:
+                response = client.post(
+                    "/api/chat/stream",
+                    json={
+                        "agent_id": "web.answer",
+                        "model_id": selected.id,
+                        "message": "hello",
+                    },
+                )
+
+        self.assertEqual(response.status_code, 200)
+        resolve_model_name.assert_called_once_with(
+            model_id=selected.id,
+            model_name=None,
+        )
+        stream_chat.assert_awaited_once_with(
+            agent_id="web.answer",
+            mode=None,
+            model_name=selected.model_name,
+            message="hello",
+            user_id="browser-user",
+            session_id=None,
+            history=None,
+            stream=True,
+        )
 
     def test_ai_endpoint_routes_conversation_title_task(self) -> None:
         client = TestClient(server.app)

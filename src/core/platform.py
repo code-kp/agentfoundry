@@ -24,13 +24,20 @@ class AgentPlatform:
 
     def __init__(self, workspace_root: Path) -> None:
         self.workspace_root = workspace_root
-        self._env_path = self.workspace_root.parent / ".env"
+        self._env_path = self._resolve_env_path()
         self._loaded_env_keys: Dict[str, Optional[str]] = {}
         self._last_dotenv_values: Dict[str, str] = {}
         self.discovery = DiscoveryService(self.workspace_root)
         self._records: Dict[str, AgentRecord] = {}
         self._runtimes: Dict[tuple[str, str, str], Any] = {}
         self.refresh()
+
+    def _resolve_env_path(self) -> Path:
+        for directory in self.workspace_root.parents:
+            candidate = directory / ".env"
+            if candidate.is_file():
+                return candidate
+        return self.workspace_root.parent / ".env"
 
     def refresh(self) -> None:
         env_changed = self._sync_workspace_env()
@@ -91,6 +98,7 @@ class AgentPlatform:
         self._records = records
 
     def _sync_workspace_env(self) -> bool:
+        self._env_path = self._resolve_env_path()
         next_values = {
             key: value
             for key, value in dotenv_values(self._env_path).items()
@@ -113,7 +121,8 @@ class AgentPlatform:
             if key in self._loaded_env_keys:
                 os.environ[key] = value
                 continue
-            if key in os.environ:
+            existing_value = os.environ.get(key)
+            if existing_value not in (None, ""):
                 continue
             self._loaded_env_keys[key] = None
             os.environ[key] = value

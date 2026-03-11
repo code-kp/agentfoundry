@@ -15,6 +15,10 @@ from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = ROOT_DIR / "src"
+FRONTEND_DIR = ROOT_DIR / "frontend"
+TESTS_DIR = ROOT_DIR / "tests"
+SCRIPTS_DIR = ROOT_DIR / "scripts"
 STATE_FILE = ROOT_DIR / ".dev-supervisor.json"
 BACKEND_HOST = "127.0.0.1"
 BACKEND_PORT = "8000"
@@ -35,6 +39,7 @@ def main() -> int:
 
 
 def run_supervisor() -> int:
+    ensure_expected_layout()
     stop_managed_processes(verbose=False)
 
     backend = start_process(
@@ -45,7 +50,7 @@ def run_supervisor() -> int:
     frontend = start_process(
         name="frontend",
         command=build_frontend_command(),
-        cwd=ROOT_DIR / "frontend",
+        cwd=FRONTEND_DIR,
     )
     processes = [backend, frontend]
     write_state(processes)
@@ -120,24 +125,28 @@ def stop_managed_processes(*, verbose: bool = True) -> int:
 
 
 def build_backend_command() -> list[str]:
+    reload_dirs = [
+        project_relative_path(SRC_DIR),
+        project_relative_path(TESTS_DIR),
+        project_relative_path(SCRIPTS_DIR),
+    ]
     return [
         sys.executable,
         "-m",
         "uvicorn",
         "server:app",
         "--app-dir",
-        "src",
+        project_relative_path(SRC_DIR),
         "--reload",
-        "--reload-dir",
-        "src",
-        "--reload-dir",
-        "tests",
-        "--reload-dir",
-        "scripts",
+        *[
+            value
+            for directory in reload_dirs
+            for value in ("--reload-dir", directory)
+        ],
         "--reload-include",
         "*.py",
         "--reload-exclude",
-        "frontend/*",
+        "{name}/*".format(name=FRONTEND_DIR.name),
         "--reload-exclude",
         ".venv/*",
         "--reload-exclude",
@@ -171,6 +180,31 @@ def build_frontend_command() -> list[str]:
         "--port",
         FRONTEND_PORT,
     ]
+
+
+def ensure_expected_layout() -> None:
+    required_paths = {
+        "src": SRC_DIR,
+        "frontend": FRONTEND_DIR,
+        "tests": TESTS_DIR,
+        "scripts": SCRIPTS_DIR,
+    }
+    missing = [
+        name for name, path in required_paths.items() if not path.exists()
+    ]
+    if not missing:
+        return
+    raise RuntimeError(
+        "Dev supervisor expected the restructured project layout under {root}, "
+        "but could not find: {missing}".format(
+            root=ROOT_DIR,
+            missing=", ".join(sorted(missing)),
+        )
+    )
+
+
+def project_relative_path(path: Path) -> str:
+    return str(path.relative_to(ROOT_DIR))
 
 
 def start_process(*, name: str, command: list[str], cwd: Path) -> dict[str, Any]:

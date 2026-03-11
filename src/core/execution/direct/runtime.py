@@ -158,6 +158,18 @@ class DirectAgentRuntime:
             return DEFAULT_MODEL_TIMEOUT_SECONDS
         return value if value > 0 else DEFAULT_MODEL_TIMEOUT_SECONDS
 
+    def _public_model_name(self, model_name: Optional[str] = None) -> str:
+        label = contracts_models.public_model_label(model_name or self.model_name)
+        if label:
+            return label
+        if self._model_source == "request":
+            return "the selected model"
+        if self._model_source == "agent":
+            return "the agent model"
+        if self._model_source == "env":
+            return "the configured model"
+        return "the default model"
+
     def _load_skill_store(self) -> skills_store.SkillStore:
         return skills_store.SkillStore(self.record.project_root / "skills")
 
@@ -213,15 +225,15 @@ class DirectAgentRuntime:
         )
 
     def _model_started_message(self, model_name: Optional[str] = None) -> str:
-        active_model = model_name or self.model_name
+        active_model = self._public_model_name(model_name)
         return "Sending the request to {model}.".format(model=active_model)
 
     def _model_waiting_message(self, model_name: Optional[str] = None) -> str:
-        active_model = model_name or self.model_name
+        active_model = self._public_model_name(model_name)
         return "Still waiting for a response from {model}.".format(model=active_model)
 
     def _model_timeout_message(self, model_name: Optional[str] = None) -> str:
-        active_model = model_name or self.model_name
+        active_model = self._public_model_name(model_name)
         seconds = int(self.model_timeout_seconds)
         message = "Timed out waiting for {model} after {seconds} seconds.".format(
             model=active_model,
@@ -229,22 +241,19 @@ class DirectAgentRuntime:
         )
         if self._model_source == "request":
             return (
-                "{message} The current request selected {configured}. Leave the UI "
-                "model setting blank to fall back to the agent or environment default."
+                "{message} Leave the model selector on Default to fall back to the "
+                "agent or environment default."
             ).format(
                 message=message,
-                configured=self.model_name,
             )
         if self._model_source == "env" and self.model_name != DEFAULT_MODEL:
             return (
-                "{message} The current .env sets MODEL_NAME to {configured}. "
-                "Remove that setting to fall back to {default_model}, or replace it "
-                "with a model that responds for your account. If the default model "
+                "{message} The current .env sets a non-default model. Remove "
+                "`MODEL_NAME` to fall back to the default runtime choice, or replace "
+                "it with a model that responds for your account. If the default model "
                 "also times out, check outbound network access and API key permissions."
             ).format(
                 message=message,
-                configured=self.model_name,
-                default_model=DEFAULT_MODEL,
             )
         return (
             "{message} Check outbound network access, model availability, and API "
@@ -262,7 +271,7 @@ class DirectAgentRuntime:
                 await stream_progress.emit_debug_event(
                     "model_waiting",
                     agent_id=self.record.agent_id,
-                    model=model_name or self.model_name,
+                    model=self._public_model_name(model_name),
                     message=self._model_waiting_message(model_name),
                 )
         except asyncio.CancelledError:
@@ -597,7 +606,7 @@ class DirectAgentRuntime:
             {
                 "agent_id": self.record.agent_id,
                 "session_id": session_id,
-                "model": self.model_name,
+                "model": self._public_model_name(),
                 "message": self._model_started_message(),
             },
         )
