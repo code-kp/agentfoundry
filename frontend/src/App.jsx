@@ -7,11 +7,14 @@ import { LoadingScreen } from "./components/LoadingScreen";
 import { NavigationRail } from "./components/NavigationRail";
 import { SettingsModal } from "./components/SettingsModal";
 import {
+  MODEL_NAME_STORAGE_KEY,
   RESPONSE_STREAMING_STORAGE_KEY,
   USER_ID_STORAGE_KEY,
+  resolveInitialModelName,
   normalizeResponseStreaming,
   resolveInitialResponseStreaming,
   resolveInitialUserId,
+  sanitizeModelName,
   sanitizeUserId,
 } from "./lib/preferences";
 import { useWorkspaceChat } from "./hooks/useWorkspaceChat";
@@ -46,6 +49,7 @@ function resolveInitialSidebarWidth() {
 export function App() {
   const [themeMode, setThemeMode] = React.useState(resolveInitialThemeMode);
   const [userId, setUserId] = React.useState(resolveInitialUserId);
+  const [modelName, setModelName] = React.useState(resolveInitialModelName);
   const [responseStreaming, setResponseStreaming] = React.useState(resolveInitialResponseStreaming);
   const [isAgentPickerOpen, setIsAgentPickerOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
@@ -56,6 +60,7 @@ export function App() {
   const {
     activeAgent,
     activeAgentId,
+    activeRuntimeMode,
     activeSessionId,
     activeChat,
     agentDirectoryLoading,
@@ -69,13 +74,15 @@ export function App() {
     onNewChat,
     onSelectAgent,
     onSelectChat,
+    onSetRuntimeMode,
     onSend,
+    orchestrationAvailable,
     refreshAgentDirectory,
     retryInitialLoad,
     serviceHealth,
     searchText,
     setSearchText,
-  } = useWorkspaceChat(userId, responseStreaming);
+  } = useWorkspaceChat(userId, responseStreaming, modelName);
 
   React.useEffect(() => {
     applyTheme(themeMode);
@@ -103,6 +110,10 @@ export function App() {
   React.useEffect(() => {
     window.localStorage.setItem(USER_ID_STORAGE_KEY, sanitizeUserId(userId));
   }, [userId]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(MODEL_NAME_STORAGE_KEY, sanitizeModelName(modelName));
+  }, [modelName]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
@@ -174,6 +185,9 @@ export function App() {
   }, []);
   const handleResponseStreamingChange = React.useCallback((nextValue) => {
     setResponseStreaming(normalizeResponseStreaming(nextValue));
+  }, []);
+  const handleModelNameChange = React.useCallback((nextValue) => {
+    setModelName(sanitizeModelName(nextValue));
   }, []);
   const handleAgentPickerSelect = React.useCallback((agentId) => {
     if (agentPickerMode === "new_chat") {
@@ -278,7 +292,10 @@ export function App() {
             messages={activeChat?.messages || []}
             isSending={isSending}
             disabled={!activeAgentId || isSending}
+            orchestrationAvailable={orchestrationAvailable}
+            runtimeMode={activeRuntimeMode}
             onOpenAgentPicker={openAgentPickerForSwitch}
+            onSetRuntimeMode={onSetRuntimeMode}
             onSend={onSend}
           />
         </ErrorBoundary>
@@ -304,6 +321,8 @@ export function App() {
         onUserIdChange={handleUserIdChange}
         responseStreaming={responseStreaming}
         onResponseStreamingChange={handleResponseStreamingChange}
+        modelName={modelName}
+        onModelNameChange={handleModelNameChange}
       />
     </main>
   );

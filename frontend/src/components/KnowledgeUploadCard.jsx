@@ -125,7 +125,7 @@ export function KnowledgeUploadCard({ userId }) {
               onChange={onFilesChange}
             />
             <strong>{formatFileList(files)}</strong>
-            <small>Files are stored under <code>workspace/skills/uploads/...</code> and scoped to this user ID.</small>
+            <small>Files are stored under <code>src/workspace/skills/uploads/...</code> and scoped to this user ID.</small>
           </label>
 
           <label className="knowledge-upload-field">

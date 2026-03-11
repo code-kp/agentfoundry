@@ -1487,25 +1487,58 @@ time {
   scroll-padding-bottom: 12px;
 }
 
+.execution-panel-thoughts {
+  gap: 12px;
+}
+
+.execution-header-thinking {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.execution-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
 .execution-current {
   display: grid;
   overflow: hidden;
   border: 1px solid var(--accent-border);
-  border-radius: 10px;
+  border-radius: 16px;
   background:
+    linear-gradient(180deg, var(--accent-faint) 0%, transparent 100%),
     linear-gradient(180deg, var(--surface-strong) 0%, var(--surface) 100%);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.execution-current.model {
+  border-color: rgba(46, 109, 92, 0.24);
+}
+
+.execution-current.error {
+  border-color: rgba(180, 35, 24, 0.24);
+  background: linear-gradient(180deg, rgba(180, 35, 24, 0.05) 0%, transparent 100%), var(--surface);
 }
 
 .execution-current-body {
   display: grid;
-  gap: 8px;
-  min-height: 102px;
-  padding: 12px 14px;
-  animation: rise-in 180ms ease;
+  gap: 10px;
+  min-height: 118px;
+  padding: 16px 18px;
+  animation: rise-in 220ms ease;
+}
+
+.execution-current-thought {
+  transform-origin: 50% 0%;
 }
 
 .execution-current-topline,
-.execution-history-header {
+.execution-history-header,
+.execution-history-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1517,9 +1550,9 @@ time {
   align-items: center;
   gap: 8px;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -1538,122 +1571,100 @@ time {
 }
 
 .execution-current time,
-.execution-history-header {
-  color: var(--text-muted);
+.execution-history-meta time {
+  color: var(--text-soft);
   font-size: 0.72rem;
 }
 
 .execution-current strong {
-  font-size: 0.92rem;
-  letter-spacing: -0.01em;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.execution-current p {
+.execution-current-voice {
   margin: 0;
   color: var(--text);
-  font-size: 0.82rem;
-  line-height: 1.55;
+  font-size: 0.95rem;
+  line-height: 1.72;
+  letter-spacing: -0.01em;
 }
 
 .execution-history {
   display: grid;
-  gap: 8px;
-  animation: trace-in 180ms ease;
-}
-
-.execution-item {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr);
-  gap: 12px;
-  animation: trace-in 180ms ease;
-}
-
-.execution-rail {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  padding-top: 5px;
-}
-
-.execution-node {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--neutral-dot);
-  position: relative;
-  z-index: 1;
-}
-
-.execution-line {
-  position: absolute;
-  top: 13px;
-  bottom: -10px;
-  width: 1px;
-  background: var(--border);
-}
-
-.execution-item.live .execution-node {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-glow-strong);
-  animation: pulse 1.1s ease-in-out infinite;
-}
-
-.execution-item.latest:not(.live) .execution-node {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-glow-soft);
-  animation: none;
-}
-
-.execution-item.error .execution-node {
-  background: var(--danger);
-  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.1);
-  animation: none;
-}
-
-.execution-step {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-  padding-bottom: 2px;
-}
-
-.execution-step-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 10px;
+  animation: trace-in 180ms ease;
 }
 
-.execution-step-header strong {
-  font-size: 0.8rem;
+.execution-history-header {
+  color: var(--text-muted);
+  font-size: 0.74rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.execution-step-header time {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-}
-
-.execution-preview {
+.execution-history-list {
+  list-style: none;
   margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 198px;
+  overflow: auto;
+}
+
+.execution-history-item {
+  display: grid;
+  gap: 6px;
+  padding: 11px 2px 11px 14px;
+  border-left: 2px solid var(--border);
+  animation: trace-in 180ms ease;
+}
+
+.execution-history-voice {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.58;
+}
+
+.execution-history-meta {
+  color: var(--text-soft);
+  font-size: 0.7rem;
+}
+
+.execution-history-meta span {
   color: var(--text-muted);
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .execution-detail {
   margin-top: 2px;
   color: var(--text);
   font-size: 0.78rem;
-  line-height: 1.5;
+  line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
 }
 
 .execution-more {
   justify-self: start;
   padding-left: 26px;
+}
+
+.execution-history-header .execution-more {
+  justify-self: auto;
+  padding-left: 0;
 }
 
 .execution-collapsed {
@@ -1673,6 +1684,10 @@ time {
 .execution-collapsed strong {
   color: var(--text);
   font-size: 0.84rem;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .execution-collapsed:hover {
@@ -1882,6 +1897,51 @@ time {
   color: var(--text-muted);
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.settings-divider {
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+.settings-field {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-field > span {
+  color: var(--text);
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.settings-field > input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--input-surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.settings-field > input:focus {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 4px var(--accent-focus-shadow);
+}
+
+.settings-field > small {
+  color: var(--text-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.settings-field code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--inline-code-surface);
 }
 
 .settings-panel .sidebar-action {
@@ -2311,9 +2371,85 @@ time {
   border-top: 0;
 }
 
+.composer-meta {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .composer-hint {
   color: var(--text-muted);
   font-size: 0.78rem;
+}
+
+.composer-runtime-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.composer-runtime-toggle input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+.composer-runtime-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.composer-runtime-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-soft) 86%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 88%, transparent);
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.composer-runtime-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  transition: transform 180ms ease, background 160ms ease;
+}
+
+.composer-runtime-toggle.active {
+  color: var(--accent);
+}
+
+.composer-runtime-toggle.active .composer-runtime-switch {
+  background: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 88%, transparent);
+}
+
+.composer-runtime-toggle.active .composer-runtime-thumb {
+  transform: translateX(14px);
+  background: var(--accent);
+}
+
+.composer-runtime-toggle:hover:not(.disabled) {
+  color: var(--text);
+}
+
+.composer-runtime-toggle.disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
 }
 
 .sidebar-action:hover:not(:disabled) {

@@ -9,6 +9,31 @@ function createMessageBase(role, metadata = {}) {
   };
 }
 
+export function normalizeRuntimeMode(mode) {
+  return mode === "orchestrated" ? "orchestrated" : "direct";
+}
+
+export function resolveChatRuntimeMode(agent, preferredMode = "") {
+  const availableModes = Array.isArray(agent?.runtime_modes) && agent.runtime_modes.length
+    ? agent.runtime_modes.map((item) => normalizeRuntimeMode(item))
+    : ["direct"];
+  const requestedMode = normalizeRuntimeMode(preferredMode);
+  if (availableModes.includes(requestedMode)) {
+    return requestedMode;
+  }
+
+  const defaultMode = normalizeRuntimeMode(agent?.default_mode);
+  if (availableModes.includes(defaultMode)) {
+    return defaultMode;
+  }
+
+  return "direct";
+}
+
+export function agentSupportsOrchestration(agent) {
+  return Boolean(agent?.orchestration_configured);
+}
+
 export function createUserMessage(text, metadata = {}) {
   return {
     ...createMessageBase("user", metadata),
@@ -78,10 +103,12 @@ export function createThinkingEvent(type, payload = {}) {
     stepId: payload.step_id || "",
     type,
     channel: payload.channel || "thinking",
+    source: payload.source || "",
     label: payload.label || "",
     detail: payload.detail || "",
     state: payload.state || "",
     body: formatEventBody(type, payload),
+    data: payload,
     timestamp: payload.timestamp,
   };
 }
@@ -155,11 +182,13 @@ export function buildChatTitle(agentId, agents, chats, excludeChatId = "") {
 }
 
 export function createChat(agentId, agents, chats) {
+  const agent = agents.find((item) => item.id === agentId) || null;
   return {
     id: crypto.randomUUID(),
     title: buildChatTitle(agentId, agents, chats),
     titleSource: "default",
     agentId,
+    runtimeMode: resolveChatRuntimeMode(agent),
     sessionIds: {},
     messages: [],
     updatedAt: Date.now(),

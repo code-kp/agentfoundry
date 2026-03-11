@@ -3,6 +3,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { fetchAgents, fetchHealth, invokeAi, streamChat } from "../api/client";
 import { buildConversationTitleInstructions, buildConversationTitleMessage } from "../lib/aiPrompts";
 import {
+  agentSupportsOrchestration,
   buildChatTitle,
   createAssistantMessage,
   createChat,
@@ -10,14 +11,28 @@ import {
   createUserMessage,
   filterTree,
   normalizeAgentTree,
+  normalizeRuntimeMode,
+  resolveChatRuntimeMode,
   serializeConversationHistory,
 } from "../lib/chatWorkspace";
+import { sanitizeModelName } from "../lib/preferences";
 
-function buildSessionKey(userId, agentId) {
-  return `${userId}::${agentId}`;
+const EXECUTION_EVENT_TYPES = new Set([
+  "thinking_step",
+  "tool_selection_reason",
+  "tool_started",
+  "tool_completed",
+  "skill_context_selected",
+  "model_started",
+  "error",
+]);
+
+function buildSessionKey(userId, agentId, runtimeMode, modelName) {
+  const normalizedModelName = sanitizeModelName(modelName) || "__default_model__";
+  return `${userId}::${agentId}::${normalizeRuntimeMode(runtimeMode)}::${normalizedModelName}`;
 }
 
-export function useWorkspaceChat(userId, responseStreaming) {
+export function useWorkspaceChat(userId, responseStreaming, modelName) {
   const [tree, setTree] = useState([]);
   const [agents, setAgents] = useState([]);
   const [chats, setChats] = useState([]);
@@ -36,13 +51,25 @@ export function useWorkspaceChat(userId, responseStreaming) {
   const deferredSearch = useDeferredValue(searchText);
   const loadRequestRef = useRef(0);
   const pendingAssistantTextRef = useRef(new Map());
-  const pendingStreamingStateRef = useRef(new Map());
   const flushAssistantFrameRef = useRef(0);
 
   const applyAgentCatalog = useCallback((data) => {
     const incomingAgents = data.agents || [];
     setTree(normalizeAgentTree(data.tree || []));
     setAgents(incomingAgents);
+    setChats((prev) => prev.map((chat) => {
+      const agent = incomingAgents.find((item) => item.id === chat.agentId) || null;
+      const nextRuntimeMode = resolveChatRuntimeMode(agent, chat.runtimeMode);
+      if (nextRuntimeMode === chat.runtimeMode) {
+        return chat;
+      }
+
+      return {
+        ...chat,
+        runtimeMode: nextRuntimeMode,
+        updatedAt: Date.now(),
+      };
+    }));
     return incomingAgents;
   }, []);
 
@@ -123,6 +150,7 @@ export function useWorkspaceChat(userId, responseStreaming) {
       if (flushAssistantFrameRef.current) {
         window.cancelAnimationFrame(flushAssistantFrameRef.current);
       }
+      pendingAssistantTextRef.current.clear();
       loadRequestRef.current += 1;
     };
   }, [loadWorkspace]);
@@ -132,11 +160,18 @@ export function useWorkspaceChat(userId, responseStreaming) {
     [chats, activeChatId],
   );
   const activeAgentId = activeChat?.agentId || "";
-  const activeSessionId = activeChat?.sessionIds?.[buildSessionKey(userId, activeAgentId)] || "";
   const activeAgent = useMemo(
     () => agents.find((item) => item.id === activeAgentId) || null,
     [agents, activeAgentId],
   );
+  const activeRuntimeMode = useMemo(
+    () => resolveChatRuntimeMode(activeAgent, activeChat?.runtimeMode || ""),
+    [activeAgent, activeChat?.runtimeMode],
+  );
+  const activeSessionId = activeChat?.sessionIds?.[
+    buildSessionKey(userId, activeAgentId, activeRuntimeMode, modelName)
+  ] || "";
+  const orchestrationAvailable = agentSupportsOrchestration(activeAgent);
   const isSending = activeChat ? runningChatIds.has(activeChat.id) : false;
   const filteredTree = useMemo(
     () => filterTree(tree, deferredSearch),
@@ -178,20 +213,20 @@ export function useWorkspaceChat(userId, responseStreaming) {
     }
 
     const pendingChunks = pendingAssistantTextRef.current;
-    const pendingStreamingStates = pendingStreamingStateRef.current;
-    if (!pendingChunks.size && !pendingStreamingStates.size) {
+    if (!pendingChunks.size) {
       return;
     }
+
+    let hasRemainingQueuedText = false;
 
     setChats((prev) => prev.map((chat) => {
       let messages = null;
 
       chat.messages.forEach((message, index) => {
         const key = `${chat.id}:${message.id}`;
-        const nextChunk = pendingChunks.get(key);
-        const nextStreamingState = pendingStreamingStates.get(key);
+        const queuedText = pendingChunks.get(key) || "";
 
-        if (nextChunk === undefined && nextStreamingState === undefined) {
+        if (!queuedText) {
           return;
         }
 
@@ -199,11 +234,24 @@ export function useWorkspaceChat(userId, responseStreaming) {
           messages = [...chat.messages];
         }
 
-        messages[index] = {
+        const nextMessage = {
           ...messages[index],
-          text: nextChunk !== undefined ? `${messages[index].text}${nextChunk}` : messages[index].text,
-          streaming: nextStreamingState ?? messages[index].streaming,
         };
+
+        if (queuedText) {
+          const [revealedText, remainingText] = consumeRevealChunk(queuedText);
+          nextMessage.text = `${nextMessage.text}${revealedText}`;
+          nextMessage.streaming = true;
+
+          if (remainingText) {
+            pendingChunks.set(key, remainingText);
+            hasRemainingQueuedText = true;
+          } else {
+            pendingChunks.delete(key);
+          }
+        }
+
+        messages[index] = nextMessage;
       });
 
       if (!messages) {
@@ -217,8 +265,9 @@ export function useWorkspaceChat(userId, responseStreaming) {
       };
     }));
 
-    pendingChunks.clear();
-    pendingStreamingStates.clear();
+    if (hasRemainingQueuedText) {
+      scheduleAssistantFlush();
+    }
   }, []);
 
   const scheduleAssistantFlush = useCallback(() => {
@@ -257,6 +306,10 @@ export function useWorkspaceChat(userId, responseStreaming) {
     updateChat(activeChat.id, (chat) => ({
       ...chat,
       agentId,
+      runtimeMode: resolveChatRuntimeMode(
+        agents.find((item) => item.id === agentId) || null,
+        chat.runtimeMode,
+      ),
       title: chat.messages.length ? chat.title : buildChatTitle(agentId, agents, chats, chat.id),
       titleSource: chat.messages.length ? chat.titleSource : "default",
       updatedAt: Date.now(),
@@ -300,12 +353,26 @@ export function useWorkspaceChat(userId, responseStreaming) {
     }
   }, [activeChatId, applyAgentCatalog]);
 
+  const onSetRuntimeMode = (nextMode) => {
+    if (!activeChat || !activeAgentId || runningChatIds.has(activeChat.id)) {
+      return;
+    }
+
+    updateChat(activeChat.id, (chat) => ({
+      ...chat,
+      runtimeMode: resolveChatRuntimeMode(activeAgent, nextMode),
+      updatedAt: Date.now(),
+    }));
+    setError("");
+  };
+
   const onSend = async (text) => {
     if (!activeChat || !activeAgentId) {
       return;
     }
 
     const chatId = activeChat.id;
+    const runtimeMode = activeRuntimeMode;
     if (runningChatIds.has(chatId)) {
       return;
     }
@@ -313,10 +380,12 @@ export function useWorkspaceChat(userId, responseStreaming) {
     const assistantMessage = createAssistantMessage({
       agentId: activeAgentId,
       agentName: activeAgent?.name || activeAgentId,
+      runtimeMode,
     });
     const userMessage = createUserMessage(text, {
       targetAgentId: activeAgentId,
       targetAgentName: activeAgent?.name || activeAgentId,
+      runtimeMode,
     });
 
     const shouldGenerateTitle = activeChat.messages.every((item) => item.role !== "user");
@@ -341,6 +410,7 @@ export function useWorkspaceChat(userId, responseStreaming) {
     if (shouldGenerateTitle) {
       void invokeAi({
         agentId: activeAgentId,
+        modelName,
         instructions: buildConversationTitleInstructions(),
         message: buildConversationTitleMessage(text),
       }).then((title) => {
@@ -369,6 +439,8 @@ export function useWorkspaceChat(userId, responseStreaming) {
     try {
       const result = await streamChat({
         agentId: activeAgentId,
+        mode: runtimeMode,
+        modelName,
         message: text,
         sessionId: activeSessionId || null,
         userId,
@@ -380,13 +452,17 @@ export function useWorkspaceChat(userId, responseStreaming) {
               ...chat,
               sessionIds: {
                 ...(chat.sessionIds || {}),
-                [buildSessionKey(userId, activeAgentId)]: payload.session_id,
+                [buildSessionKey(userId, activeAgentId, runtimeMode, modelName)]: payload.session_id,
               },
               updatedAt: Date.now(),
             }));
           }
 
           if (type === "thinking_step") {
+            appendThinkingEvent(chatId, assistantMessage.id, type, payload);
+          }
+
+          if (EXECUTION_EVENT_TYPES.has(type) && type !== "thinking_step") {
             appendThinkingEvent(chatId, assistantMessage.id, type, payload);
           }
 
@@ -404,31 +480,32 @@ export function useWorkspaceChat(userId, responseStreaming) {
               key,
               `${pendingAssistantTextRef.current.get(key) || ""}${payload.text}`,
             );
-            pendingStreamingStateRef.current.set(key, true);
             scheduleAssistantFlush();
           }
 
           if (type === "assistant_message") {
-            flushPendingAssistantText();
             finalAssistantText = payload.text || finalAssistantText;
+            const key = `${chatId}:${assistantMessage.id}`;
+            pendingAssistantTextRef.current.delete(key);
+            flushPendingAssistantText();
             updateMessage(chatId, assistantMessage.id, (current) => ({
               ...current,
-              text: payload.text || current.text,
+              text: payload.text || finalAssistantText || current.text,
               streaming: false,
               usage: payload.usage || current.usage || null,
             }));
           }
 
           if (type === "run_completed") {
-            flushPendingAssistantText();
             updateMessage(chatId, assistantMessage.id, (current) => ({
               ...current,
               thinkingActive: false,
-              streaming: false,
             }));
           }
 
           if (type === "error") {
+            const key = `${chatId}:${assistantMessage.id}`;
+            pendingAssistantTextRef.current.delete(key);
             flushPendingAssistantText();
             updateMessage(chatId, assistantMessage.id, (current) => ({
               ...current,
@@ -445,12 +522,19 @@ export function useWorkspaceChat(userId, responseStreaming) {
           ...chat,
           sessionIds: {
             ...(chat.sessionIds || {}),
-            [buildSessionKey(userId, activeAgentId)]: result.sessionId,
+            [buildSessionKey(
+              userId,
+              activeAgentId,
+              result.mode || runtimeMode,
+              modelName,
+            )]: result.sessionId,
           },
           updatedAt: Date.now(),
         }));
       }
     } catch (err) {
+      const key = `${chatId}:${assistantMessage.id}`;
+      pendingAssistantTextRef.current.delete(key);
       flushPendingAssistantText();
       setError(err.message || "Failed to stream response.");
       updateMessage(chatId, assistantMessage.id, (current) => ({
@@ -479,6 +563,7 @@ export function useWorkspaceChat(userId, responseStreaming) {
   return {
     activeAgent,
     activeAgentId,
+    activeRuntimeMode,
     activeSessionId,
     activeChat,
     agents,
@@ -493,13 +578,35 @@ export function useWorkspaceChat(userId, responseStreaming) {
     onNewChat,
     onSelectAgent,
     onSelectChat,
+    onSetRuntimeMode,
     onSend,
+    orchestrationAvailable,
     refreshAgentDirectory,
     retryInitialLoad: loadWorkspace,
     searchText,
     serviceHealth,
     setSearchText,
   };
+}
+
+function consumeRevealChunk(text, targetLength = 34, maxLength = 72) {
+  const value = String(text || "");
+  if (!value) {
+    return ["", ""];
+  }
+
+  if (value.length <= targetLength) {
+    return [value, ""];
+  }
+
+  const windowEnd = Math.min(value.length, maxLength);
+  const remainderWindow = value.slice(targetLength, windowEnd);
+  const boundaryMatch = remainderWindow.match(/^\S*\s+/);
+  const splitIndex = boundaryMatch
+    ? targetLength + boundaryMatch[0].length
+    : windowEnd;
+
+  return [value.slice(0, splitIndex), value.slice(splitIndex)];
 }
 
 function upsertThinkingEvent(events, nextEvent) {
@@ -513,11 +620,13 @@ function upsertThinkingEvent(events, nextEvent) {
   }
 
   const updated = [...events];
-  updated[index] = {
+  const mergedEvent = {
     ...updated[index],
     ...nextEvent,
     id: updated[index].id,
     stepId: updated[index].stepId,
   };
+  updated.splice(index, 1);
+  updated.push(mergedEvent);
   return updated;
 }

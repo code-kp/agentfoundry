@@ -25,6 +25,13 @@ function scrollContainerToAnchor(container, anchor, behavior = "smooth") {
   });
 }
 
+function scrollContainerToBottom(container, behavior = "smooth") {
+  container.scrollTo({
+    top: container.scrollHeight,
+    behavior,
+  });
+}
+
 export function MessageList({ messages, agentName, agentDescription }) {
   const listRef = useRef(null);
   const initialActiveExecution = getActiveExecutionMessage(messages);
@@ -51,8 +58,25 @@ export function MessageList({ messages, agentName, agentDescription }) {
       activeExecutionId: activeExecutionMessage?.id || null,
     };
     const previousSnapshot = previousSnapshotRef.current;
+    const shouldFollowStreamingAnswer =
+      Boolean(activeExecutionMessage)
+      && lastMessage?.id === activeExecutionMessage.id
+      && Boolean(lastMessage?.streaming)
+      && Boolean(lastMessage?.text);
 
     if (activeExecutionMessage) {
+      if (
+        shouldFollowStreamingAnswer
+        && snapshot.lastText !== previousSnapshot.lastText
+      ) {
+        scrollContainerToBottom(
+          listRef.current,
+          previousSnapshot.lastText ? "auto" : "smooth",
+        );
+        previousSnapshotRef.current = snapshot;
+        return undefined;
+      }
+
       if (snapshot.activeExecutionId !== previousSnapshot.activeExecutionId) {
         let settleTimeoutId = 0;
         const frameId = window.requestAnimationFrame(() => {
@@ -92,10 +116,7 @@ export function MessageList({ messages, agentName, agentDescription }) {
     }
 
     if (previousSnapshot.activeExecutionId && !snapshot.activeExecutionId) {
-      listRef.current.scrollTo({
-        top: listRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+      scrollContainerToBottom(listRef.current, "smooth");
 
       previousSnapshotRef.current = snapshot;
       return undefined;
@@ -110,10 +131,10 @@ export function MessageList({ messages, agentName, agentDescription }) {
       );
 
     if (shouldScroll) {
-      listRef.current.scrollTo({
-        top: listRef.current.scrollHeight,
-        behavior: snapshot.count === previousSnapshot.count ? "smooth" : "auto",
-      });
+      scrollContainerToBottom(
+        listRef.current,
+        snapshot.count === previousSnapshot.count ? "smooth" : "auto",
+      );
     }
 
     previousSnapshotRef.current = snapshot;
@@ -137,10 +158,7 @@ export function MessageList({ messages, agentName, agentDescription }) {
     }
 
     const observer = new ResizeObserver(() => {
-      container.scrollTo({
-        top: container.scrollHeight,
-        behavior: "auto",
-      });
+      scrollContainerToBottom(container, "auto");
     });
 
     observer.observe(targetNode);

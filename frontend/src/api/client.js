@@ -114,6 +114,7 @@ export async function uploadSkillFile({
 
 export async function invokeAi({
   agentId,
+  modelName,
   instructions,
   message,
 }) {
@@ -122,6 +123,7 @@ export async function invokeAi({
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       agent_id: agentId,
+      model_name: modelName,
       instructions,
       message,
     }),
@@ -137,6 +139,8 @@ export async function invokeAi({
 
 export async function streamChat({
   agentId,
+  mode,
+  modelName,
   message,
   sessionId,
   userId = "browser-user",
@@ -149,6 +153,8 @@ export async function streamChat({
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       agent_id: agentId,
+      mode,
+      model_name: modelName,
       message,
       session_id: sessionId,
       user_id: userId,
@@ -163,6 +169,7 @@ export async function streamChat({
   }
 
   const nextSessionId = response.headers.get("X-Session-Id") || sessionId || null;
+  const resolvedMode = response.headers.get("X-Mode") || mode || "direct";
 
   if (!response.body) {
     throw new Error("Streaming body unavailable in this browser.");
@@ -188,7 +195,7 @@ export async function streamChat({
     }
   }
 
-  return { sessionId: nextSessionId };
+  return { mode: resolvedMode, sessionId: nextSessionId };
 }
 
 function parseSseFrame(frame) {

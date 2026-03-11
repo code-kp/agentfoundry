@@ -10,7 +10,11 @@ const STREAMING_OPTIONS = [
 export function ResponseStreamingCard({
   enabled,
   onChange,
+  modelName,
+  onModelNameChange,
 }) {
+  const modelLabel = modelName || "Default";
+
   return (
     <section className="settings-card">
       <div className="settings-card-header">
@@ -31,6 +35,30 @@ export function ResponseStreamingCard({
       <p className="settings-helper-text">
         Thinking and tool progress keep updating live either way. This only changes whether the final answer text arrives token by token.
       </p>
+
+      <div className="settings-divider" />
+
+      <div className="settings-card-header">
+        <div>
+          <h3>Model override</h3>
+          <p>Leave blank to use the agent default or the backend environment default.</p>
+        </div>
+        <span className="settings-chip">{modelLabel}</span>
+      </div>
+
+      <label className="settings-field">
+        <span>Model name</span>
+        <input
+          type="text"
+          value={modelName}
+          placeholder="gemini-2.0-flash or litellm:openai/gpt-4o-mini"
+          onChange={(event) => onModelNameChange(event.target.value)}
+        />
+        <small>
+          Use a native Gemini name like <code>gemini-2.0-flash</code> or a full LiteLLM
+          reference like <code>litellm:openai/gpt-4o-mini</code>.
+        </small>
+      </label>
     </section>
   );
 }

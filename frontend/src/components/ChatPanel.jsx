@@ -12,7 +12,10 @@ export function ChatPanel({
   messages,
   isSending,
   disabled,
+  orchestrationAvailable,
+  runtimeMode,
   onOpenAgentPicker,
+  onSetRuntimeMode,
   onSend,
 }) {
   const hasActiveAgent = Boolean(agentName || agentId);
@@ -65,6 +68,9 @@ export function ChatPanel({
             isSending={isSending}
             hasAgent={Boolean(agentName || agentId)}
             agentName={agentName || agentId}
+            orchestrationAvailable={orchestrationAvailable}
+            runtimeMode={runtimeMode}
+            onSetRuntimeMode={onSetRuntimeMode}
             onSend={onSend}
           />
         </footer>
