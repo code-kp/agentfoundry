@@ -13,7 +13,14 @@ from dotenv import dotenv_values
 
 from core.discovery import DiscoveryService
 from core.contracts.agent import Agent, normalize_runtime_mode
+from core.contracts.tools import ensure_tools
 from core.execution import AgentRecord, create_agent_runtime
+from core.execution.smart.runtime import (
+    SMART_AGENT_DESCRIPTION,
+    SMART_AGENT_ID,
+    SMART_AGENT_NAME,
+    SmartAgentRuntime,
+)
 from core.contracts.skills import SkillDefinition
 from core.registry import Register
 from core.skills.uploads import create_uploaded_skill
@@ -138,6 +145,24 @@ class AgentPlatform:
     ) -> tuple[str, str, Any]:
         self.refresh()
         resolved_agent = agent_id or sorted(self._records.keys())[0]
+        requested_model_name = str(model_name or "").strip()
+
+        if resolved_agent == SMART_AGENT_ID:
+            resolved_mode = normalize_runtime_mode(mode or "direct")
+            if resolved_mode != "direct":
+                raise ValueError(
+                    "The coordinator only supports direct runtime selection."
+                )
+            runtime_key = (resolved_agent, resolved_mode, requested_model_name)
+            runtime = self._runtimes.get(runtime_key)
+            if runtime is None:
+                runtime = SmartAgentRuntime(
+                    self,
+                    model_name_override=requested_model_name or None,
+                )
+                self._runtimes[runtime_key] = runtime
+            return resolved_agent, resolved_mode, runtime
+
         record = self._records.get(resolved_agent)
         if record is None:
             raise KeyError(
@@ -153,7 +178,6 @@ class AgentPlatform:
                 )
             )
 
-        requested_model_name = str(model_name or "").strip()
         runtime_key = (resolved_agent, resolved_mode, requested_model_name)
         runtime = self._runtimes.get(runtime_key)
         if runtime is None:
@@ -199,7 +223,7 @@ class AgentPlatform:
     def list_agents(self, refresh: bool = True) -> List[Dict[str, Any]]:
         if refresh:
             self.refresh()
-        agents = []
+        agents = [self._smart_agent_entry()]
         for agent_id, record in sorted(self._records.items(), key=lambda pair: pair[0]):
             definition = Register.get(Agent, record.agent_name)
             runtime_modes = ["direct"]
@@ -222,7 +246,14 @@ class AgentPlatform:
     def agent_tree(self, refresh: bool = True) -> List[Dict[str, Any]]:
         if refresh:
             self.refresh()
-        root: Dict[str, Any] = {}
+        root: Dict[str, Any] = {
+            SMART_AGENT_ID: {
+                "type": "agent",
+                "id": SMART_AGENT_ID,
+                "name": SMART_AGENT_NAME,
+                "description": SMART_AGENT_DESCRIPTION,
+            }
+        }
         for agent_id, record in sorted(self._records.items(), key=lambda pair: pair[0]):
             definition = Register.get(Agent, record.agent_name)
             parts = agent_id.split(".")
@@ -248,7 +279,10 @@ class AgentPlatform:
 
         def flatten(children_map: Dict[str, Any]) -> List[Dict[str, Any]]:
             nodes = []
-            for key in sorted(children_map.keys()):
+            for key in sorted(
+                children_map.keys(),
+                key=lambda item: (item != SMART_AGENT_ID, item),
+            ):
                 node = children_map[key]
                 if node["type"] == "namespace":
                     nodes.append(
@@ -270,6 +304,31 @@ class AgentPlatform:
             return nodes
 
         return flatten(root)
+
+    def routing_candidates(self, refresh: bool = True) -> List[Dict[str, Any]]:
+        if refresh:
+            self.refresh()
+
+        candidates: List[Dict[str, Any]] = []
+        for agent_id, record in sorted(self._records.items(), key=lambda pair: pair[0]):
+            definition = Register.get(Agent, record.agent_name)
+            runtime_modes = ["direct"]
+            if definition.orchestration_configured:
+                runtime_modes.append("orchestrated")
+            candidates.append(
+                {
+                    "id": agent_id,
+                    "name": definition.name,
+                    "description": definition.description,
+                    "default_mode": normalize_runtime_mode(definition.runtime_mode),
+                    "runtime_modes": runtime_modes,
+                    "behavior": list(definition.behavior),
+                    "knowledge": list(definition.knowledge),
+                    "tools": [tool.name for tool in ensure_tools(definition.tools)],
+                    "system_prompt": definition.system_prompt,
+                }
+            )
+        return candidates
 
     async def stream_chat(
         self,
@@ -316,7 +375,9 @@ class AgentPlatform:
         )
         from core.retrieval.index import LocalEmbeddingIndex
 
-        LocalEmbeddingIndex(self.workspace_root.parent.parent / ".embeddings").mark_dirty(
+        LocalEmbeddingIndex(
+            self.workspace_root.parent.parent / ".embeddings"
+        ).mark_dirty(
             "skills",
             key=definition.id,
         )
@@ -331,4 +392,17 @@ class AgentPlatform:
             "title": definition.title,
             "class": definition.skill_class,
             "summary": definition.summary,
+        }
+
+    def _smart_agent_entry(self) -> Dict[str, Any]:
+        return {
+            "id": SMART_AGENT_ID,
+            "name": SMART_AGENT_NAME,
+            "description": SMART_AGENT_DESCRIPTION,
+            "module": "core.execution.smart",
+            "project": "system",
+            "default_mode": "direct",
+            "runtime_modes": ["direct"],
+            "orchestration_configured": False,
+            "virtual": True,
         }

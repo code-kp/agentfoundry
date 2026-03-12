@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -8,6 +9,77 @@ from core.retrieval.index import LocalEmbeddingIndex
 from core.retrieval.scoring import stable_fingerprint
 from core.retrieval.service import SemanticRetriever
 from core.retrieval.types import DirtyIndexStatus, RetrievalDocument, RetrievalMatch
+
+
+_SUMMARY_HINT_PHRASES = (
+    "what have we discussed",
+    "what did we discuss",
+    "what have we talked about",
+    "what did we talk about",
+    "what have we been talking about",
+    "catch me up",
+    "sum up",
+)
+_CURRENT_CONVERSATION_HINT_PHRASES = (
+    "this chat",
+    "this conversation",
+    "this thread",
+    "this session",
+    "our chat",
+    "our conversation",
+    "our thread",
+    "our session",
+    "current chat",
+    "current conversation",
+    "so far",
+    "up to now",
+    "thus far",
+)
+_SUMMARY_TOKENS = {
+    "summarize",
+    "summary",
+    "summarise",
+    "recap",
+    "brief",
+    "overview",
+}
+_CONVERSATION_TOKENS = {
+    "chat",
+    "conversation",
+    "thread",
+    "session",
+    "discussion",
+}
+_QUERY_STOPWORDS = {
+    "a",
+    "an",
+    "the",
+    "this",
+    "that",
+    "our",
+    "my",
+    "me",
+    "we",
+    "us",
+    "please",
+    "can",
+    "could",
+    "would",
+    "you",
+    "give",
+    "provide",
+    "for",
+    "of",
+    "to",
+    "from",
+    "in",
+    "on",
+    "about",
+    "so",
+    "far",
+    "now",
+    "current",
+}
 
 
 class ConversationCorpusBuilder:
@@ -191,6 +263,9 @@ class ConversationSemanticRetriever:
         documents = self.builder.build_documents(user_id=user_id)
         history_count = len(list(history or []))
         normalized_conversation_id = str(conversation_id or "").strip()
+        same_conversation_only = bool(normalized_conversation_id) and _targets_current_conversation(
+            query
+        )
 
         def document_filter(document: RetrievalDocument) -> bool:
             metadata = document.metadata
@@ -200,7 +275,10 @@ class ConversationSemanticRetriever:
                 return True
 
             doc_conversation_id = str(metadata.get("conversation_id") or "").strip()
-            if doc_conversation_id != normalized_conversation_id:
+            if same_conversation_only:
+                if doc_conversation_id != normalized_conversation_id:
+                    return False
+            elif doc_conversation_id != normalized_conversation_id:
                 return True
 
             total_messages = int(metadata.get("total_messages") or 0)
@@ -241,6 +319,36 @@ class ConversationSemanticRetriever:
             )
         except Exception:
             return [], self.retriever.dirty_status("conversations", documents)
+
+
+def _targets_current_conversation(query: str) -> bool:
+    normalized = " ".join(str(query or "").lower().split())
+    if not normalized:
+        return False
+
+    if any(phrase in normalized for phrase in _SUMMARY_HINT_PHRASES):
+        return True
+
+    tokens = re.findall(r"[a-z0-9']+", normalized)
+    if not tokens:
+        return False
+
+    has_summary_token = any(token in _SUMMARY_TOKENS for token in tokens)
+    has_conversation_token = any(token in _CONVERSATION_TOKENS for token in tokens)
+    if not has_summary_token:
+        return False
+
+    if any(phrase in normalized for phrase in _CURRENT_CONVERSATION_HINT_PHRASES):
+        return True
+
+    content_tokens = [
+        token
+        for token in tokens
+        if token not in _QUERY_STOPWORDS
+        and token not in _SUMMARY_TOKENS
+        and token not in _CONVERSATION_TOKENS
+    ]
+    return has_conversation_token and not content_tokens
 
 
 def _windowed_messages(
