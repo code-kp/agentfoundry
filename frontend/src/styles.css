@@ -3243,13 +3243,13 @@ time {
 
 .agent-directory-folder-card,
 .agent-team-folder-card {
-  min-height: 148px;
+  min-height: 124px;
 }
 
 .agent-directory-folder-card {
   align-items: start;
   align-content: start;
-  padding: 18px;
+  padding: 16px;
 }
 
 .agent-directory-folder-card .agent-directory-item-copy {
@@ -3263,8 +3263,8 @@ time {
 
 .agent-team-folder-card {
   grid-template-rows: auto 1fr auto;
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  padding: 16px;
 }
 
 .agent-team-folder-card .agent-card-main {
@@ -3275,7 +3275,7 @@ time {
   margin-top: auto;
   padding-left: 0;
   border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 .agent-directory-cloud-card:hover,
