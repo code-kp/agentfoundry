@@ -1,6 +1,5 @@
-import unittest
-
 import unittest.mock as mock
+import unittest
 
 from api import AgentApi, _parse_sse_frame
 import core.contracts.models as contract_models
@@ -28,7 +27,9 @@ class AgentApiTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("models", payload)
         self.assertTrue(payload["models"])
-        self.assertTrue(all(item["id"].startswith("mdl_") for item in payload["models"]))
+        self.assertTrue(
+            all(item["id"].startswith("mdl_") for item in payload["models"])
+        )
         self.assertTrue(all("model_name" not in item for item in payload["models"]))
 
     async def test_stream_chat_events_forwards_stream_flag(self) -> None:

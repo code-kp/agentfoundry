@@ -107,6 +107,8 @@ Local URLs:
 
 - Run tests: `uv run poe test`
 - Format code: `uv run poe format`
+- Start the agent scaffold wizard: `uv run poe new-agent`
+  - Under the hood this runs `uv run python scripts/create_agent_scaffold.py`
 - Build frontend: `npm --prefix frontend run build`
 - Install the VS Code Related Tests extension: `uv run poe install-tests-ext`
 
@@ -122,3 +124,5 @@ uv run python src/api.py catalog
 uv run python src/api.py chat "summarize the refund policy"
 uv run python src/api.py repl
 ```
+
+The agent scaffold wizard lives in [`scripts/create_agent_scaffold.py`](./scripts/create_agent_scaffold.py). It is deterministic, does not call a model, and can create a starter agent module plus optional matching skill and tool stubs. The wizard asks for a namespace path like `support/refunds`, then derives the module filename from the agent name.

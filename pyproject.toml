@@ -38,6 +38,7 @@ backend = "uvicorn server:app --app-dir src --reload --reload-dir src --reload-d
 frontend-install = "npm --prefix frontend install"
 frontend = "npm --prefix frontend run dev -- --host 127.0.0.1 --port 3000"
 install-tests-ext = "uv run python scripts/install_related_tests_extension.py"
+new-agent = "uv run python scripts/create_agent_scaffold.py"
 format = "ruff format ."
 test = "uv run python -m pytest"
 stop = "uv run python scripts/dev_supervisor.py stop"
