@@ -3,26 +3,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MessageItem } from "./MessageItem";
 
 const BOTTOM_THRESHOLD_PX = 32;
-const NEW_MESSAGE_TOP_OFFSET_PX = 16;
 
 function scrollContainerToBottom(container, behavior = "smooth") {
   container.scrollTo({
     top: container.scrollHeight,
-    behavior,
-  });
-}
-
-function scrollContainerToMessage(container, messageNode, behavior = "smooth") {
-  if (!container || !messageNode) {
-    return;
-  }
-
-  const containerRect = container.getBoundingClientRect();
-  const messageRect = messageNode.getBoundingClientRect();
-  const nextTop = container.scrollTop + (messageRect.top - containerRect.top) - NEW_MESSAGE_TOP_OFFSET_PX;
-
-  container.scrollTo({
-    top: Math.max(0, nextTop),
     behavior,
   });
 }
@@ -36,23 +20,16 @@ function isScrolledToBottom(container) {
   return distanceFromBottom <= BOTTOM_THRESHOLD_PX;
 }
 
-function getLatestUserMessageId(messages) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index]?.role === "user") {
-      return messages[index].id || null;
-    }
-  }
-
-  return null;
-}
-
 export function MessageList({ messages, agentName, agentDescription }) {
   const listRef = useRef(null);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
-  const previousLatestUserMessageIdRef = useRef(getLatestUserMessageId(messages));
+  const followLatestRef = useRef(true);
+  const previousMessageCountRef = useRef(messages.length);
 
   const syncScrollState = useCallback(() => {
-    setShowScrollToLatest(!isScrolledToBottom(listRef.current));
+    const pinnedToBottom = isScrolledToBottom(listRef.current);
+    followLatestRef.current = pinnedToBottom;
+    setShowScrollToLatest(!pinnedToBottom);
   }, []);
 
   useEffect(() => {
@@ -60,25 +37,14 @@ export function MessageList({ messages, agentName, agentDescription }) {
       return undefined;
     }
 
-    const latestUserMessageId = getLatestUserMessageId(messages);
-    const previousLatestUserMessageId = previousLatestUserMessageIdRef.current;
+    const nextBehavior = previousMessageCountRef.current < messages.length ? "smooth" : "auto";
     const frameId = window.requestAnimationFrame(() => {
-      if (
-        latestUserMessageId
-        && latestUserMessageId !== previousLatestUserMessageId
-        && listRef.current
-      ) {
-        const messageNode = listRef.current.querySelector(
-          `[data-message-id="${latestUserMessageId}"]`,
-        );
-
-        if (messageNode) {
-          scrollContainerToMessage(listRef.current, messageNode, "smooth");
-        }
+      if (followLatestRef.current && listRef.current) {
+        scrollContainerToBottom(listRef.current, nextBehavior);
       }
 
       syncScrollState();
-      previousLatestUserMessageIdRef.current = latestUserMessageId;
+      previousMessageCountRef.current = messages.length;
     });
 
     return () => {
@@ -112,6 +78,8 @@ export function MessageList({ messages, agentName, agentDescription }) {
             if (!listRef.current) {
               return;
             }
+            followLatestRef.current = true;
+            setShowScrollToLatest(false);
             scrollContainerToBottom(listRef.current, "smooth");
           }}
         >

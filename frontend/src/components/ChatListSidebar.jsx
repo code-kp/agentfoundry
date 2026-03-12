@@ -30,6 +30,7 @@ function getChatStatus(chat) {
 export function ChatListSidebar({
   chats,
   activeChatId,
+  onCollapse,
   onDeleteChat,
   onSelectChat,
   onNewChat,
@@ -142,6 +143,15 @@ export function ChatListSidebar({
           <div className="sidebar-header-actions">
             <button type="button" className="sidebar-action" onClick={onNewChat}>
               New
+            </button>
+            <button
+              type="button"
+              className="sidebar-action sidebar-collapse-button"
+              onClick={onCollapse}
+              aria-label="Collapse conversations pane"
+              title="Collapse conversations pane"
+            >
+              Hide
             </button>
           </div>
         </header>

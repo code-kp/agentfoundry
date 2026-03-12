@@ -5,6 +5,7 @@ import { ChatListSidebar } from "./ChatListSidebar";
 export function NavigationRail({
   chats,
   activeChatId,
+  onCollapse,
   onDeleteChat,
   onNewChat,
   onOpenSettings,
@@ -16,6 +17,7 @@ export function NavigationRail({
       <ChatListSidebar
         chats={chats}
         activeChatId={activeChatId}
+        onCollapse={onCollapse}
         onDeleteChat={onDeleteChat}
         onSelectChat={onSelectChat}
         onNewChat={onNewChat}
