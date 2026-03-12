@@ -114,7 +114,10 @@ class DirectAgentRuntime:
             default=memory_module.MemorySnapshot(),
         )
         self.skill_store = self._load_skill_store()
-        self.skill_resolver = skills_resolver.SkillResolver(self.skill_store)
+        self.skill_resolver = skills_resolver.SkillResolver(
+            self.skill_store,
+            embeddings_root=self._embeddings_root(),
+        )
         self.turn_context_resolver = retrieval_turns.TurnContextResolver(
             retrieval_conversations.ConversationSemanticRetriever(
                 conversations_root=self._conversation_root(),
@@ -191,14 +194,11 @@ class DirectAgentRuntime:
     def _load_skill_store(self) -> skills_store.SkillStore:
         return skills_store.SkillStore(self.record.project_root / "skills")
 
-    def _workspace_root(self) -> Path:
-        return self.record.project_root.parent.parent
-
     def _conversation_root(self) -> Path:
-        return self._workspace_root() / ".conversations"
+        return self.record.data_root / ".conversations"
 
     def _embeddings_root(self) -> Path:
-        return self._workspace_root() / ".embeddings"
+        return self.record.data_root / ".embeddings"
 
     def _build_adk_agent(self):
         instruction = runtime_prompts.build_agent_instruction(
@@ -416,6 +416,7 @@ class DirectAgentRuntime:
         turn_context_token: Optional[contextvars.Token] = None
         tool_guardrails_token: Optional[contextvars.Token] = None
         skill_store_token: Optional[contextvars.Token] = None
+        skill_embeddings_token: Optional[contextvars.Token] = None
         history_token: Optional[contextvars.Token] = None
         memory_token: Optional[contextvars.Token] = None
         usage_aggregator = runtime_usage.UsageAggregator()
@@ -429,6 +430,9 @@ class DirectAgentRuntime:
         try:
             turn_context_var = self._ensure_turn_context_var()
             skill_store_token = skills_context.bind_skill_store(self.skill_store)
+            skill_embeddings_token = skills_context.bind_skill_embeddings_root(
+                self._embeddings_root()
+            )
             tool_guardrails_token = self._tool_guardrails.set(
                 guardrails_module.ToolLoopGuardrails(self.execution)
             )
@@ -538,6 +542,8 @@ class DirectAgentRuntime:
                 self._tool_guardrails.reset(tool_guardrails_token)
             if skill_store_token is not None:
                 skills_context.reset_skill_store(skill_store_token)
+            if skill_embeddings_token is not None:
+                skills_context.reset_skill_embeddings_root(skill_embeddings_token)
             if history_token is not None:
                 self._conversation_history.reset(history_token)
             if memory_token is not None:

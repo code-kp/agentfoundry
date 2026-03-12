@@ -29,22 +29,51 @@ from core.skills.uploads import create_uploaded_skill
 class AgentPlatform:
     """Main platform runtime facade: discovery + registry + agent execution."""
 
-    def __init__(self, workspace_root: Path) -> None:
+    def __init__(
+        self,
+        workspace_root: Path,
+        *,
+        workspace_package: str = "workspace",
+        data_root: Path | None = None,
+        env_path: Path | None = None,
+    ) -> None:
         self.workspace_root = workspace_root
+        self.workspace_package = str(workspace_package or "").strip() or "workspace"
+        self.data_root = (
+            Path(data_root) if data_root is not None else self._default_data_root()
+        )
+        self._configured_env_path = Path(env_path) if env_path is not None else None
         self._env_path = self._resolve_env_path()
         self._loaded_env_keys: Dict[str, Optional[str]] = {}
         self._last_dotenv_values: Dict[str, str] = {}
-        self.discovery = DiscoveryService(self.workspace_root)
+        self.discovery = DiscoveryService(
+            self.workspace_root,
+            workspace_package=self.workspace_package,
+        )
         self._records: Dict[str, AgentRecord] = {}
         self._runtimes: Dict[tuple[str, str, str], Any] = {}
         self.refresh()
 
+    def _default_data_root(self) -> Path:
+        package_depth = len(
+            [part for part in self.workspace_package.split(".") if part.strip()]
+        )
+        parents = list(self.workspace_root.parents)
+        if package_depth >= len(parents):
+            return self.workspace_root.parent
+        import_root = parents[max(package_depth - 1, 0)]
+        if import_root.name == "src":
+            return import_root.parent
+        return import_root
+
     def _resolve_env_path(self) -> Path:
+        if self._configured_env_path is not None:
+            return self._configured_env_path
         for directory in self.workspace_root.parents:
             candidate = directory / ".env"
             if candidate.is_file():
                 return candidate
-        return self.workspace_root.parent / ".env"
+        return self.data_root / ".env"
 
     def refresh(self) -> None:
         env_changed = self._sync_workspace_env()
@@ -73,6 +102,7 @@ class AgentPlatform:
                 agent_name=item.definition.name,
                 project_name=item.project_name,
                 project_root=item.project_root,
+                data_root=self.data_root,
                 fingerprint=item.fingerprint,
             )
 
@@ -381,7 +411,7 @@ class AgentPlatform:
         from core.retrieval.index import LocalEmbeddingIndex
 
         LocalEmbeddingIndex(
-            self.workspace_root.parent.parent / ".embeddings"
+            self.data_root / ".embeddings"
         ).mark_dirty(
             "skills",
             key=definition.id,

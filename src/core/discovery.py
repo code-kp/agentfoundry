@@ -177,10 +177,25 @@ class DiscoveryService:
     def _prepare_import_path(self) -> None:
         if not self.workspace_root.exists():
             return
-        root_parent = str(self.workspace_root.parent)
+        root_parent = str(self._import_root())
         if root_parent not in sys.path:
             sys.path.insert(0, root_parent)
         importlib.invalidate_caches()
+
+    def _import_root(self) -> Path:
+        package_depth = len(
+            [part for part in self.workspace_package.split(".") if part.strip()]
+        )
+        if package_depth <= 0:
+            return self.workspace_root.parent
+        parents = list(self.workspace_root.parents)
+        if package_depth - 1 >= len(parents):
+            raise RuntimeError(
+                "Workspace package depth does not match workspace path: {package}".format(
+                    package=self.workspace_package
+                )
+            )
+        return parents[package_depth - 1]
 
     def _load_tool_modules(self) -> None:
         Register.clear(ToolDefinition)

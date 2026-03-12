@@ -12,3 +12,8 @@ class AgentRecord:
     project_name: str
     project_root: Path
     fingerprint: str
+    data_root: Path | None = None
+
+    def __post_init__(self) -> None:
+        if self.data_root is None:
+            object.__setattr__(self, "data_root", self.project_root)

@@ -1,7 +1,7 @@
 [project]
-name = "adk-skill-stream-ui"
+name = "agentfoundry"
 version = "0.1.0"
-description = "Agent platform with core runtime, workspace discovery, and React UI."
+description = "Reusable agent platform runtime, API factory, shared web UI, and CLI tooling."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -22,28 +22,30 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["api", "server"]
-
 [tool.setuptools.package-dir]
 "" = "src"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["core*", "workspace*", "services*"]
+include = ["agent_foundry*", "core*", "services*"]
 exclude = ["frontend*", "tests*"]
 namespaces = true
 
+[project.scripts]
+foundry-new-agent = "agent_foundry.cli.new_agent:main"
+foundry-sync-embeddings = "agent_foundry.cli.sync_embeddings:main"
+foundry-dev = "agent_foundry.cli.dev:main"
+
 [tool.poe.tasks]
-backend = "uvicorn server:app --app-dir src --reload --reload-dir src --reload-dir tests --reload-dir scripts --reload-include '*.py' --reload-exclude 'frontend/*' --reload-exclude '.venv/*' --reload-exclude '*/.venv/*' --reload-exclude 'venv/*' --reload-exclude '*/venv/*' --reload-exclude '*site-packages/*' --reload-exclude '__pycache__/*' --host 127.0.0.1 --port 8000"
 frontend-install = "npm --prefix frontend install"
 frontend = "npm --prefix frontend run dev -- --host 127.0.0.1 --port 3000"
 install-tests-ext = "uv run python scripts/install_related_tests_extension.py"
-new-agent = "uv run python scripts/create_agent_scaffold.py"
+new-agent = "uv run foundry-new-agent"
 format = "ruff format ."
 test = "uv run python -m pytest"
-stop = "uv run python scripts/dev_supervisor.py stop"
-dev = "uv run python scripts/dev_supervisor.py run"
-embeddings-sync = "uv run python scripts/sync_embeddings.py"
+stop = "uv run foundry-dev stop"
+dev = "uv run foundry-dev run"
+embeddings-sync = "uv run foundry-sync-embeddings"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

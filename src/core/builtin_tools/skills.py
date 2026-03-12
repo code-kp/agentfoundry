@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from core.contracts.tools import ToolModule, register_tool_class
 from core.retrieval.skills import SkillSemanticRetriever
-from core.skills.context import current_skill_store
+from core.skills.context import current_skill_embeddings_root, current_skill_store
 
 
 @register_tool_class
@@ -29,7 +29,10 @@ class SearchSkillsTool(ToolModule):
         self.progress.debug(
             "Searching indexed skill chunks.", query=query, max_results=max_results
         )
-        results = SkillSemanticRetriever(store).search(
+        results = SkillSemanticRetriever(
+            store,
+            embeddings_root=current_skill_embeddings_root(),
+        ).search(
             query=query,
             max_results=max_results,
         )

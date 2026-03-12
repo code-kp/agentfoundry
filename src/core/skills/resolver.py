@@ -36,9 +36,14 @@ class ResolvedSkillContext:
 
 
 class SkillResolver:
-    def __init__(self, store: SkillStore) -> None:
+    def __init__(
+        self,
+        store: SkillStore,
+        *,
+        embeddings_root=None,
+    ) -> None:
         self.store = store
-        self.semantic = SkillSemanticRetriever(store)
+        self.semantic = SkillSemanticRetriever(store, embeddings_root=embeddings_root)
 
     def resolve(
         self,

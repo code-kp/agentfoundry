@@ -10,8 +10,9 @@ _SAFE_USER_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 class ConversationStore:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, embeddings_root: Path | None = None) -> None:
         self.root = root
+        self.embeddings_root = embeddings_root or (self.root.parent / ".embeddings")
         self.root.mkdir(parents=True, exist_ok=True)
 
     def list_chats(self, user_id: str) -> list[dict[str, Any]]:
@@ -202,7 +203,7 @@ class ConversationStore:
         try:
             from core.retrieval.index import LocalEmbeddingIndex
 
-            LocalEmbeddingIndex(self.root.parent / ".embeddings").mark_dirty(
+            LocalEmbeddingIndex(self.embeddings_root).mark_dirty(
                 "conversations",
                 key=user_id,
             )

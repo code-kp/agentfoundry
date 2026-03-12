@@ -8,20 +8,35 @@ __all__ = [
     "SkillChunk",
     "SkillResolver",
     "SkillStore",
+    "bind_skill_embeddings_root",
     "bind_skill_store",
     "build_user_upload_scope",
     "create_uploaded_skill",
+    "current_skill_embeddings_root",
     "current_skill_store",
     "describe_resolved_skill_context",
     "parse_skill_file",
+    "reset_skill_embeddings_root",
     "reset_skill_store",
     "serialize_resolved_skills",
 ]
 
 
 _EXPORTS = {
+    "bind_skill_embeddings_root": (
+        "core.skills.context",
+        "bind_skill_embeddings_root",
+    ),
     "bind_skill_store": ("core.skills.context", "bind_skill_store"),
+    "current_skill_embeddings_root": (
+        "core.skills.context",
+        "current_skill_embeddings_root",
+    ),
     "current_skill_store": ("core.skills.context", "current_skill_store"),
+    "reset_skill_embeddings_root": (
+        "core.skills.context",
+        "reset_skill_embeddings_root",
+    ),
     "reset_skill_store": ("core.skills.context", "reset_skill_store"),
     "parse_skill_file": ("core.skills.parser", "parse_skill_file"),
     "ResolvedSkillContext": ("core.skills.resolver", "ResolvedSkillContext"),

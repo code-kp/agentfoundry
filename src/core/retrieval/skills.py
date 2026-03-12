@@ -13,9 +13,14 @@ from core.skills.uploads import build_user_upload_scope
 
 
 class SkillSemanticRetriever:
-    def __init__(self, store: SkillStore) -> None:
+    def __init__(
+        self,
+        store: SkillStore,
+        embeddings_root: Path | None = None,
+    ) -> None:
         self.store = store
-        self.retriever = SemanticRetriever(LocalEmbeddingIndex(self._embeddings_root()))
+        self.embeddings_root = embeddings_root or self._embeddings_root()
+        self.retriever = SemanticRetriever(LocalEmbeddingIndex(self.embeddings_root))
 
     def dirty_status(self, *, skill_ids: Sequence[str] | None = None) -> DirtyIndexStatus:
         documents = self._documents(skill_ids=skill_ids)
