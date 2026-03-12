@@ -1,4 +1,8 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+const configuredApiBase = String(import.meta.env.VITE_API_BASE || "").trim();
+
+export const API_BASE = configuredApiBase
+  ? configuredApiBase.replace(/\/+$/, "")
+  : "";
 
 const AGENTS_TIMEOUT_MS = 6500;
 const HEALTH_TIMEOUT_MS = 2500;
