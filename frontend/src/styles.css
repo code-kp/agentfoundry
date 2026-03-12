@@ -379,13 +379,15 @@ time {
 .sidebar-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
 .sidebar-header-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
 }
@@ -1034,6 +1036,7 @@ time {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -1042,6 +1045,7 @@ time {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 1 1 320px;
 }
 
 .workspace-header-copy h1 {
@@ -1120,6 +1124,8 @@ time {
   flex-wrap: wrap;
   justify-content: flex-end;
   margin-left: auto;
+  flex: 1 1 220px;
+  max-width: 100%;
 }
 
 .workspace-session-chip {
@@ -3977,6 +3983,28 @@ time {
   .agent-directory-cloud-card.wide,
   .agent-team-cloud-card.wide {
     grid-column: span 6;
+  }
+}
+
+@media (max-width: 1320px) {
+  .sidebar-header,
+  .workspace-title-row,
+  .workspace-header-actions,
+  .workspace-agent-inline {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sidebar-header-actions,
+  .workspace-header-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .workspace-title-heading,
+  .workspace-session-chip {
+    max-width: 100%;
   }
 }
 
