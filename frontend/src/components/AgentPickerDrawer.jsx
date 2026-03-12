@@ -90,25 +90,6 @@ function buildNamespaceEntries(nodes) {
     }));
 }
 
-function getCloudSizeClass(entry, index) {
-  const count = Number(entry?.count) || 0;
-  const nameLength = String(entry?.name || "").length;
-
-  if (count >= 10 || nameLength >= 18) {
-    return "wide";
-  }
-
-  if ((index + count) % 5 === 0 || count >= 5) {
-    return "medium";
-  }
-
-  if (count <= 2 && nameLength <= 8) {
-    return "compact";
-  }
-
-  return "standard";
-}
-
 function formatFolderAvailability(count) {
   return count === 1
     ? "1 agent inside this folder"
@@ -396,6 +377,10 @@ export function AgentPickerDrawer({
     }
 
     const listClassName = (() => {
+      if (options.variant === "folder-grid") {
+        return options.team ? "agent-team-folder-grid" : "agent-directory-folder-grid";
+      }
+
       if (options.variant === "cloud") {
         return "agent-directory-cloud";
       }
@@ -420,11 +405,11 @@ export function AgentPickerDrawer({
     );
   };
 
-  const renderBrowseNamespaceItem = (entry, index) => (
+  const renderBrowseNamespaceItem = (entry) => (
     <button
       key={`browse-folder-${entry.path ? entry.path.join("/") : entry.name}`}
       type="button"
-      className={`agent-directory-cloud-card ${getCloudSizeClass(entry, index)}`}
+      className="agent-directory-cloud-card agent-directory-folder-card"
       onClick={() => setBrowsePath(entry.path || [...browsePath, entry.name])}
     >
       <span className="agent-directory-item-icon folder"><FolderIcon /></span>
@@ -461,7 +446,7 @@ export function AgentPickerDrawer({
     );
   };
 
-  const renderTeamNamespaceItem = (entry, index) => {
+  const renderTeamNamespaceItem = (entry) => {
     const selection = getSelectionState(entry.agentIds);
     const availabilityLabel = formatFolderAvailability(entry.count);
     const selectionMeta = selection.checked
@@ -473,7 +458,11 @@ export function AgentPickerDrawer({
     return (
       <div
         key={`team-namespace-${entry.path ? entry.path.join("/") : entry.name}`}
-        className={`agent-team-cloud-card ${getCloudSizeClass(entry, index)} ${selection.checked ? "checked" : ""}`}
+        className={[
+          "agent-team-cloud-card",
+          "agent-team-folder-card",
+          selection.checked ? "checked" : "",
+        ].filter(Boolean).join(" ")}
       >
         <div className="agent-card-main">
           <span className="agent-directory-item-icon folder"><FolderIcon /></span>
@@ -644,11 +633,11 @@ export function AgentPickerDrawer({
 
               {hasQuery ? (
                 <div className="agent-directory-sections">
-                  {renderDirectorySection("Folders", searchedNamespaces, (entry, index) => (
+                  {renderDirectorySection("Folders", searchedNamespaces, (entry) => (
                     <button
                       key={`browse-namespace-${entry.path.join("/")}`}
                       type="button"
-                      className={`agent-directory-cloud-card ${getCloudSizeClass(entry, index)}`}
+                      className="agent-directory-cloud-card agent-directory-folder-card"
                       onClick={() => {
                         setBrowsePath(entry.path);
                         onSearchTextChange("");
@@ -660,7 +649,7 @@ export function AgentPickerDrawer({
                         <span>{formatFolderAvailability(entry.count)}</span>
                       </span>
                     </button>
-                  ), { variant: "cloud" })}
+                  ), { variant: "folder-grid" })}
                   {renderDirectorySection("Agents", searchedAgents, (entry) => renderBrowseAgentItem(
                     entry.agent,
                     entry.agent.description || "",
@@ -673,7 +662,7 @@ export function AgentPickerDrawer({
                 </div>
               ) : (
                 <div className="agent-directory-sections">
-                  {renderDirectorySection("Folders", browseNamespaceEntries, renderBrowseNamespaceItem, { variant: "cloud" })}
+                  {renderDirectorySection("Folders", browseNamespaceEntries, renderBrowseNamespaceItem, { variant: "folder-grid" })}
                   {renderDirectorySection("Agents", browseAgentEntries, (entry) => renderBrowseAgentItem(
                     entry,
                     entry.description || "",
@@ -725,7 +714,7 @@ export function AgentPickerDrawer({
 
               {hasQuery ? (
                 <div className="agent-directory-sections">
-                  {renderDirectorySection("Folders", searchedNamespaces, renderTeamNamespaceItem, { variant: "cloud" })}
+                  {renderDirectorySection("Folders", searchedNamespaces, renderTeamNamespaceItem, { variant: "folder-grid", team: true })}
                   {renderDirectorySection("Agents", searchedAgents, (entry) => renderTeamAgentItem(
                     entry.agent,
                     entry.agent.description || "",
@@ -738,7 +727,7 @@ export function AgentPickerDrawer({
                 </div>
               ) : (
                 <div className="agent-directory-sections">
-                  {renderDirectorySection("Folders", teamNamespaceEntries, renderTeamNamespaceItem, { variant: "cloud" })}
+                  {renderDirectorySection("Folders", teamNamespaceEntries, renderTeamNamespaceItem, { variant: "folder-grid", team: true })}
                   {renderDirectorySection("Agents", teamAgentEntries, (entry) => renderTeamAgentItem(
                     entry,
                     entry.description || "",

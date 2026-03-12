@@ -3188,6 +3188,14 @@ time {
   gap: 10px;
 }
 
+.agent-directory-folder-grid,
+.agent-team-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
 .agent-directory-agent-cloud {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(248px, 248px));
@@ -3231,6 +3239,43 @@ time {
 .agent-team-agent-card {
   width: 248px;
   cursor: pointer;
+}
+
+.agent-directory-folder-card,
+.agent-team-folder-card {
+  min-height: 148px;
+}
+
+.agent-directory-folder-card {
+  align-items: start;
+  align-content: start;
+  padding: 18px;
+}
+
+.agent-directory-folder-card .agent-directory-item-copy {
+  gap: 6px;
+}
+
+.agent-directory-folder-card .agent-directory-item-copy strong,
+.agent-team-folder-card .agent-directory-item-copy strong {
+  font-size: 1.02rem;
+}
+
+.agent-team-folder-card {
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  padding: 18px;
+}
+
+.agent-team-folder-card .agent-card-main {
+  align-items: start;
+}
+
+.agent-team-folder-card .agent-card-footer {
+  margin-top: auto;
+  padding-left: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  padding-top: 12px;
 }
 
 .agent-directory-cloud-card:hover,
@@ -3971,6 +4016,11 @@ time {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
+  .agent-directory-folder-grid,
+  .agent-team-folder-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+
   .agent-directory-cloud-card.compact,
   .agent-team-cloud-card.compact,
   .agent-directory-cloud-card.standard,
@@ -4096,6 +4146,8 @@ time {
   }
 
   .agent-directory-cloud,
+  .agent-directory-folder-grid,
+  .agent-team-folder-grid,
   .agent-directory-agent-cloud {
     grid-template-columns: 1fr;
   }
