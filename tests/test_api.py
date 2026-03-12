@@ -60,6 +60,7 @@ class AgentApiTest(unittest.IsolatedAsyncioTestCase):
             message="hello",
             user_id="api-user",
             session_id="session-1",
+            conversation_id=None,
             history=None,
             stream=False,
         )
@@ -90,6 +91,7 @@ class AgentApiTest(unittest.IsolatedAsyncioTestCase):
             message="hello",
             user_id="api-user",
             session_id=None,
+            conversation_id=None,
             history=None,
             stream=True,
         )
