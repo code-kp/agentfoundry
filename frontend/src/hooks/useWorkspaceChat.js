@@ -8,7 +8,12 @@ import {
   saveConversations,
   streamChat,
 } from "../api/client";
-import { buildConversationTitleInstructions, buildConversationTitleMessage } from "../lib/aiPrompts";
+import {
+  buildConversationRetitleInstructions,
+  buildConversationRetitleMessage,
+  buildConversationTitleInstructions,
+  buildConversationTitleMessage,
+} from "../lib/aiPrompts";
 import {
   agentSupportsOrchestration,
   buildChatTitle,
@@ -44,6 +49,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState("");
   const [runningChatIds, setRunningChatIds] = useState(() => new Set());
+  const [retitlingChatIds, setRetitlingChatIds] = useState(() => new Set());
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
   const [agentDirectoryLoading, setAgentDirectoryLoading] = useState(false);
@@ -251,6 +257,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
   ] || "";
   const orchestrationAvailable = agentSupportsOrchestration(activeAgent);
   const isSending = activeChat ? runningChatIds.has(activeChat.id) : false;
+  const isRefreshingTitle = activeChat ? retitlingChatIds.has(activeChat.id) : false;
   const filteredTree = useMemo(
     () => filterTree(tree, deferredSearch),
     [tree, deferredSearch],
@@ -433,6 +440,54 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
     }));
     setError("");
   };
+
+  const onRefreshTitle = useCallback(async () => {
+    const chatId = String(activeChat?.id || "").trim();
+    const agentId = String(activeChat?.agentId || "").trim();
+    if (!chatId || !agentId || runningChatIds.has(chatId) || retitlingChatIds.has(chatId)) {
+      return;
+    }
+
+    const promptMessage = buildConversationRetitleMessage(activeChat?.messages || []);
+    if (!promptMessage) {
+      return;
+    }
+
+    setRetitlingChatIds((prev) => {
+      const next = new Set(prev);
+      next.add(chatId);
+      return next;
+    });
+    setError("");
+
+    try {
+      const refreshedTitle = (await invokeAi({
+        agentId,
+        modelId,
+        instructions: buildConversationRetitleInstructions(),
+        message: promptMessage,
+      })).trim();
+
+      if (!refreshedTitle) {
+        throw new Error("Title refresh returned an empty title.");
+      }
+
+      updateChat(chatId, (chat) => ({
+        ...chat,
+        title: refreshedTitle,
+        titleSource: "generated",
+        updatedAt: Date.now(),
+      }));
+    } catch (err) {
+      setError(err?.message || "Failed to refresh the conversation title.");
+    } finally {
+      setRetitlingChatIds((prev) => {
+        const next = new Set(prev);
+        next.delete(chatId);
+        return next;
+      });
+    }
+  }, [activeChat, modelId, retitlingChatIds, runningChatIds]);
 
   const onNewChat = (agentId = activeAgentId || agents[0]?.id || "") => {
     if (!agentId) {
@@ -690,9 +745,11 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
     initialLoadError,
     initialLoadRetrying,
     isSending,
+    isRefreshingTitle,
     loading,
     onDeleteChat,
     onNewChat,
+    onRefreshTitle,
     onRenameChat,
     onSelectAgent,
     onSelectChat,

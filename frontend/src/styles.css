@@ -1028,9 +1028,62 @@ time {
   gap: 12px;
 }
 
+.workspace-title-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .workspace-header-copy h1 {
+  margin: 0;
   font-size: clamp(1rem, 1.35vw, 1.2rem);
   line-height: 1.1;
+}
+
+.workspace-title-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.workspace-title-refresh:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.workspace-title-refresh:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--accent-focus-shadow);
+}
+
+.workspace-title-refresh svg {
+  width: 14px;
+  height: 14px;
+}
+
+.workspace-title-refresh.refreshing {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.workspace-title-refresh.refreshing svg {
+  animation: rotate-refresh 0.9s linear infinite;
+}
+
+.workspace-title-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .workspace-agent-inline {

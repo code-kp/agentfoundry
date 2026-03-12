@@ -11,6 +11,7 @@ export function ChatPanel({
   sessionId,
   messages,
   isSending,
+  isRefreshingTitle,
   disabled,
   orchestrationAvailable,
   defaultModelId,
@@ -20,10 +21,15 @@ export function ChatPanel({
   runtimeMode,
   onModelIdChange,
   onOpenAgentPicker,
+  onRefreshTitle,
   onSetRuntimeMode,
   onSend,
 }) {
   const hasActiveAgent = Boolean(agentName || agentId);
+  const canRefreshTitle = hasActiveAgent && messages.some((message) => (
+    ["user", "assistant"].includes(message?.role)
+      && String(message?.text || "").trim()
+  ));
   const sessionLabel = sessionId ? "Saved context" : "Fresh context";
   const title = hasActiveAgent
     ? chatTitle || "New conversation"
@@ -34,7 +40,26 @@ export function ChatPanel({
       <header className="workspace-header">
         <div className="workspace-header-copy">
           <div className="workspace-title-row">
-            <h1>{title}</h1>
+            <div className="workspace-title-heading">
+              <h1>{title}</h1>
+              {hasActiveAgent ? (
+                <button
+                  type="button"
+                  className={isRefreshingTitle ? "workspace-title-refresh refreshing" : "workspace-title-refresh"}
+                  onClick={onRefreshTitle}
+                  disabled={!canRefreshTitle || isSending || isRefreshingTitle}
+                  aria-label="Refresh conversation title"
+                  title="Regenerate the title from the conversation summary"
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M13.65 3.35A6 6 0 1 0 14 9h-1.8a4.25 4.25 0 1 1-1.04-4.45L9.5 6.2H14V1.7l-1.35 1.65Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
             {hasActiveAgent ? (
               <div className="workspace-meta">
                 <span>{isSending ? "Streaming" : "Ready"}</span>

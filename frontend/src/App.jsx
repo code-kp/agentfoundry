@@ -77,9 +77,11 @@ export function App() {
     initialLoadError,
     initialLoadRetrying,
     isSending,
+    isRefreshingTitle,
     loading,
     onDeleteChat,
     onNewChat,
+    onRefreshTitle,
     onRenameChat,
     onSelectAgent,
     onSelectChat,
@@ -355,6 +357,7 @@ export function App() {
             sessionId={activeSessionId}
             messages={activeChat?.messages || []}
             isSending={isSending}
+            isRefreshingTitle={isRefreshingTitle}
             disabled={!activeAgentId || isSending}
             orchestrationAvailable={orchestrationAvailable}
             defaultModelId={defaultModelId}
@@ -364,6 +367,7 @@ export function App() {
             runtimeMode={activeRuntimeMode}
             onModelIdChange={handleChatModelIdChange}
             onOpenAgentPicker={openAgentPickerForSwitch}
+            onRefreshTitle={onRefreshTitle}
             onSetRuntimeMode={onSetRuntimeMode}
             onSend={onSend}
           />
