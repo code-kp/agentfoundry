@@ -27,6 +27,7 @@ import {
 } from "./lib/theme";
 
 const SIDEBAR_WIDTH_STORAGE_KEY = "agent-hub-sidebar-width";
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "agent-hub-sidebar-collapsed";
 const DEFAULT_SIDEBAR_WIDTH = 248;
 const MIN_SIDEBAR_WIDTH = 220;
 const MAX_SIDEBAR_WIDTH = 360;
@@ -48,6 +49,14 @@ function resolveInitialSidebarWidth() {
   return DEFAULT_SIDEBAR_WIDTH;
 }
 
+function resolveInitialSidebarCollapsed() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true";
+}
+
 export function App() {
   const [themeMode, setThemeMode] = React.useState(resolveInitialThemeMode);
   const [userId, setUserId] = React.useState(resolveInitialUserId);
@@ -61,6 +70,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [agentPickerMode, setAgentPickerMode] = React.useState("switch");
   const [sidebarWidth, setSidebarWidth] = React.useState(resolveInitialSidebarWidth);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(resolveInitialSidebarCollapsed);
   const [isResizingSidebar, setIsResizingSidebar] = React.useState(false);
   const resizeStateRef = React.useRef(null);
   const effectiveModelId = chatModelId || defaultModelId;
@@ -68,8 +78,8 @@ export function App() {
     activeAgent,
     activeAgentId,
     activeRuntimeMode,
-    activeSessionId,
     activeChat,
+    activeSessionId,
     agentDirectoryLoading,
     chats,
     error,
@@ -91,6 +101,7 @@ export function App() {
     refreshAgentDirectory,
     retryInitialLoad,
     serviceHealth,
+    sessionLoading,
     searchText,
     setSearchText,
   } = useWorkspaceChat(userId, responseStreaming, effectiveModelId);
@@ -117,6 +128,10 @@ export function App() {
   React.useEffect(() => {
     window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   React.useEffect(() => {
     window.localStorage.setItem(USER_ID_STORAGE_KEY, sanitizeUserId(userId));
@@ -318,12 +333,17 @@ export function App() {
 
   return (
     <main
-      className={isResizingSidebar ? "app-shell resizing" : "app-shell"}
+      className={[
+        "app-shell",
+        isResizingSidebar ? "resizing" : "",
+        isSidebarCollapsed ? "sidebar-collapsed" : "",
+      ].filter(Boolean).join(" ")}
       style={{ "--sidebar-width": `${sidebarWidth}px` }}
     >
       <NavigationRail
         activeChatId={activeChat?.id || ""}
         chats={chats}
+        onCollapse={() => setIsSidebarCollapsed(true)}
         onDeleteChat={onDeleteChat}
         onNewChat={openAgentPickerForNewChat}
         onOpenSettings={openSettings}
@@ -355,6 +375,8 @@ export function App() {
             agentDescription={activeAgent?.description || ""}
             chatTitle={activeChat?.title || ""}
             sessionId={activeSessionId}
+            sessionLoading={sessionLoading}
+            sidebarCollapsed={isSidebarCollapsed}
             messages={activeChat?.messages || []}
             isSending={isSending}
             isRefreshingTitle={isRefreshingTitle}
@@ -369,6 +391,7 @@ export function App() {
             onOpenAgentPicker={openAgentPickerForSwitch}
             onRefreshTitle={onRefreshTitle}
             onSetRuntimeMode={onSetRuntimeMode}
+            onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
             onSend={onSend}
           />
         </ErrorBoundary>

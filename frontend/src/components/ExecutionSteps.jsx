@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { formatTime, toDateTimeAttr } from "../lib/time";
+import { MarkdownContent } from "./MarkdownContent";
 
 function ensureSentence(text) {
   const cleaned = String(text || "").replace(/\s+/g, " ").trim();
@@ -412,9 +413,14 @@ export function ExecutionSteps({ events, active }) {
                 </time>
               ) : null}
             </div>
-            <strong>{active ? "What I'm doing now" : "Final thought"}</strong>
-            <p className="execution-current-voice">{summary}</p>
-            {latestSupportingDetail ? <div className="execution-detail">{latestSupportingDetail}</div> : null}
+            <div className="execution-current-voice">
+              <MarkdownContent text={summary} />
+            </div>
+            {latestSupportingDetail ? (
+              <div className="execution-detail">
+                <MarkdownContent text={latestSupportingDetail} />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -439,7 +445,9 @@ export function ExecutionSteps({ events, active }) {
 
                 return (
                   <li key={event.id} className="execution-history-item">
-                    <p className="execution-history-voice">{narration}</p>
+                    <div className="execution-history-voice">
+                      <MarkdownContent text={narration} />
+                    </div>
                     <div className="execution-history-meta">
                       <span>{getEventKicker(event)}</span>
                       {event.timestamp ? (
@@ -448,7 +456,11 @@ export function ExecutionSteps({ events, active }) {
                         </time>
                       ) : null}
                     </div>
-                    {supportingDetail ? <div className="execution-detail">{supportingDetail}</div> : null}
+                    {supportingDetail ? (
+                      <div className="execution-detail">
+                        <MarkdownContent text={supportingDetail} />
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}

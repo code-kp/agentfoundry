@@ -3,12 +3,25 @@ import React from "react";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 
+function formatSessionId(sessionId) {
+  const value = String(sessionId || "").trim();
+  if (!value) {
+    return "";
+  }
+  if (value.length <= 22) {
+    return value;
+  }
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+}
+
 export function ChatPanel({
   agentId,
   agentName,
   agentDescription,
   chatTitle,
   sessionId,
+  sessionLoading,
+  sidebarCollapsed,
   messages,
   isSending,
   isRefreshingTitle,
@@ -23,17 +36,67 @@ export function ChatPanel({
   onOpenAgentPicker,
   onRefreshTitle,
   onSetRuntimeMode,
+  onToggleSidebar,
   onSend,
 }) {
+  const [sessionCopied, setSessionCopied] = React.useState(false);
   const hasActiveAgent = Boolean(agentName || agentId);
   const canRefreshTitle = hasActiveAgent && messages.some((message) => (
     ["user", "assistant"].includes(message?.role)
       && String(message?.text || "").trim()
   ));
-  const sessionLabel = sessionId ? "Saved context" : "Fresh context";
   const title = hasActiveAgent
     ? chatTitle || "New conversation"
     : "Start a conversation";
+  const sidebarToggleLabel = sidebarCollapsed ? "Show conversations" : "Hide conversations";
+  const hasSessionId = Boolean(String(sessionId || "").trim());
+  const sessionValue = sessionLoading
+    ? "Loading..."
+    : (formatSessionId(sessionId) || "Not started");
+  const sessionTitle = hasSessionId
+    ? (sessionCopied ? "Session id copied" : `Click to copy session id: ${sessionId}`)
+    : "A session id will appear after the first successful run.";
+
+  React.useEffect(() => {
+    if (!sessionCopied) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSessionCopied(false);
+    }, 1600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [sessionCopied]);
+
+  const handleCopySessionId = React.useCallback(async () => {
+    if (!hasSessionId) {
+      return;
+    }
+
+    const value = String(sessionId).trim();
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = value;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "absolute";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setSessionCopied(true);
+    } catch {
+      setSessionCopied(false);
+    }
+  }, [hasSessionId, sessionId]);
 
   return (
     <section className="workspace-stage card-shell">
@@ -41,6 +104,20 @@ export function ChatPanel({
         <div className="workspace-header-copy">
           <div className="workspace-title-row">
             <div className="workspace-title-heading">
+              <button
+                type="button"
+                className={sidebarCollapsed ? "workspace-sidebar-toggle collapsed" : "workspace-sidebar-toggle"}
+                onClick={onToggleSidebar}
+                aria-label={sidebarToggleLabel}
+                title={sidebarToggleLabel}
+              >
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M2 3.25C2 2.56 2.56 2 3.25 2h9.5c.69 0 1.25.56 1.25 1.25v9.5c0 .69-.56 1.25-1.25 1.25h-9.5C2.56 14 2 13.44 2 12.75v-9.5Zm2.2.25a.3.3 0 0 0-.3.3v8.4c0 .17.13.3.3.3h1.8V3.5H4.2Zm3.1 0v9h5.3a.3.3 0 0 0 .3-.3V3.8a.3.3 0 0 0-.3-.3H7.3Zm4.3 3.15H8.55v-1h3.05v1Zm0 2.45H8.55v-1h3.05v1Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
               <h1>{title}</h1>
               {hasActiveAgent ? (
                 <button
@@ -60,16 +137,36 @@ export function ChatPanel({
                 </button>
               ) : null}
             </div>
-            {hasActiveAgent ? (
-              <div className="workspace-meta">
-                <span>{isSending ? "Streaming" : "Ready"}</span>
-                <span>{sessionLabel}</span>
-              </div>
-            ) : (
-              <div className="workspace-meta">
-                <span>Choose an agent to begin</span>
-              </div>
-            )}
+            <div className="workspace-header-actions">
+              {hasActiveAgent ? (
+                <button
+                  type="button"
+                  className={[
+                    "workspace-session-chip",
+                    hasSessionId ? "clickable" : "empty",
+                    sessionCopied ? "copied" : "",
+                  ].filter(Boolean).join(" ")}
+                  onClick={() => {
+                    void handleCopySessionId();
+                  }}
+                  disabled={!hasSessionId}
+                  title={sessionTitle}
+                  aria-label={hasSessionId ? "Copy session id" : "Session id not available yet"}
+                >
+                  <span className="workspace-session-label">{sessionCopied ? "Copied" : "Session"}</span>
+                  <code className="workspace-session-inline-id">{sessionValue}</code>
+                </button>
+              ) : null}
+              {hasActiveAgent ? (
+                <div className="workspace-meta">
+                  <span>{isSending ? "Streaming" : "Ready"}</span>
+                </div>
+              ) : (
+                <div className="workspace-meta">
+                  <span>Choose an agent to begin</span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="workspace-agent-inline">
             <span className="workspace-agent-label">Agent</span>
