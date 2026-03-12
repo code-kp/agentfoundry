@@ -68,15 +68,18 @@ export function Composer({
   const selectedModel = modelOptions.find((item) => item.id === modelId) || null;
   const displayedModelId = modelId || defaultModelId || "";
   const modelDisabled = isSending || modelsLoading;
-  const orchestrationTitle = !hasAgent
-    ? "Choose an agent to configure runtime mode."
+  const orchestrationHelpText = !hasAgent
+    ? "Choose an agent first. Runtime mode is configured per agent."
     : !orchestrationAvailable
-      ? "Orchestration not configured."
+      ? `${agentName || "This agent"} is not configured to run in orchestrated mode.`
       : isSending
-        ? "Wait for the current response to finish."
+        ? "Wait for the current response to finish before changing runtime mode."
         : isOrchestrated
-          ? "Running with the orchestrated runtime."
-          : "Switch to the orchestrated runtime.";
+          ? "Orchestrated runtime makes the agent plan, execute, replan, and verify before answering."
+          : "Turn this on to use a more deliberate plan, execute, replan, and verify loop.";
+  const orchestrationStatusLabel = hasAgent && !orchestrationAvailable
+    ? "Not configured"
+    : "";
   const modelTitle = modelsLoading
     ? "Loading available models."
     : selectedModel
@@ -158,28 +161,43 @@ export function Composer({
                     </span>
                   </span>
                 </label>
-                <label
-                  className={[
-                    "composer-runtime-toggle",
-                    isOrchestrated ? "active" : "",
-                    orchestrationDisabled ? "disabled" : "",
-                  ].filter(Boolean).join(" ")}
-                  title={orchestrationTitle}
-                >
-                  <span className="composer-runtime-label">Orchestrated</span>
-                  <span className="composer-runtime-switch" aria-hidden="true">
-                    <span className="composer-runtime-thumb" />
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={isOrchestrated}
-                    disabled={orchestrationDisabled}
-                    aria-label="Toggle orchestrated runtime"
-                    onChange={(event) => {
-                      onSetRuntimeMode(event.target.checked ? "orchestrated" : "direct");
-                    }}
-                  />
-                </label>
+                <div className="composer-runtime-shell">
+                  <label
+                    className={[
+                      "composer-runtime-toggle",
+                      isOrchestrated ? "active" : "",
+                      orchestrationDisabled ? "disabled" : "",
+                    ].filter(Boolean).join(" ")}
+                    aria-describedby="composer-runtime-tooltip"
+                  >
+                    <span className="composer-runtime-copy">
+                      <span className="composer-runtime-label">Orchestrated</span>
+                      {orchestrationStatusLabel ? (
+                        <span className="composer-runtime-state">{orchestrationStatusLabel}</span>
+                      ) : null}
+                    </span>
+                    <span className="composer-runtime-switch" aria-hidden="true">
+                      <span className="composer-runtime-thumb" />
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={isOrchestrated}
+                      disabled={orchestrationDisabled}
+                      aria-label="Toggle orchestrated runtime"
+                      onChange={(event) => {
+                        onSetRuntimeMode(event.target.checked ? "orchestrated" : "direct");
+                      }}
+                    />
+                  </label>
+                  <div
+                    id="composer-runtime-tooltip"
+                    className="composer-runtime-tooltip"
+                    role="tooltip"
+                  >
+                    <strong>Orchestrated runtime</strong>
+                    <span>{orchestrationHelpText}</span>
+                  </div>
+                </div>
               </>
             ) : null}
           </div>

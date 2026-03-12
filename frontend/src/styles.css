@@ -2861,6 +2861,12 @@ time {
   user-select: none;
 }
 
+.composer-runtime-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .composer-runtime-toggle input {
   position: absolute;
   inset: 0;
@@ -2868,10 +2874,25 @@ time {
   opacity: 0;
 }
 
+.composer-runtime-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .composer-runtime-label {
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+}
+
+.composer-runtime-state {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--text-soft);
 }
 
 .composer-runtime-switch {
@@ -2917,6 +2938,43 @@ time {
 .composer-runtime-toggle.disabled {
   opacity: 0.68;
   cursor: not-allowed;
+}
+
+.composer-runtime-tooltip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  width: min(300px, calc(100vw - 56px));
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--accent-border);
+  background:
+    linear-gradient(180deg, var(--surface-strong) 0%, var(--surface) 100%);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  display: grid;
+  gap: 4px;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  z-index: 3;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.composer-runtime-tooltip strong {
+  font-size: 0.74rem;
+}
+
+.composer-runtime-tooltip span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.composer-runtime-shell:hover .composer-runtime-tooltip,
+.composer-runtime-shell:focus-within .composer-runtime-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .sidebar-action:hover:not(:disabled) {
