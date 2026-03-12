@@ -34,6 +34,9 @@
   --accent-focus-shadow: rgba(46, 109, 92, 0.08);
   --accent-glow-strong: rgba(46, 109, 92, 0.12);
   --accent-glow-soft: rgba(46, 109, 92, 0.06);
+  --folder-icon-fg: #956200;
+  --folder-icon-bg: color-mix(in srgb, #f7d88a 48%, var(--surface) 52%);
+  --folder-icon-ring: color-mix(in srgb, #c99320 16%, transparent);
   --danger: #b42318;
   --danger-soft: #fef3f2;
   --neutral-dot: #c3c8ce;
@@ -95,6 +98,9 @@
   --accent-focus-shadow: rgba(113, 183, 164, 0.16);
   --accent-glow-strong: rgba(113, 183, 164, 0.16);
   --accent-glow-soft: rgba(113, 183, 164, 0.09);
+  --folder-icon-fg: #f0c56b;
+  --folder-icon-bg: color-mix(in srgb, #5b4313 62%, var(--surface-strong) 38%);
+  --folder-icon-ring: color-mix(in srgb, #f0c56b 24%, transparent);
   --danger: #f97066;
   --danger-soft: rgba(185, 28, 28, 0.18);
   --neutral-dot: #667382;
@@ -3366,8 +3372,9 @@ time {
 }
 
 .agent-directory-item-icon.folder {
-  color: #956200;
-  background: color-mix(in srgb, #f7d88a 48%, var(--surface) 52%);
+  color: var(--folder-icon-fg);
+  background: var(--folder-icon-bg);
+  box-shadow: inset 0 0 0 1px var(--folder-icon-ring);
 }
 
 .agent-directory-item-icon.team {
