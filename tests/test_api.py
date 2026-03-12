@@ -55,6 +55,7 @@ class AgentApiTest(unittest.IsolatedAsyncioTestCase):
 
         platform.stream_chat.assert_awaited_once_with(
             agent_id="web.answer",
+            team_agent_ids=None,
             mode="orchestrated",
             model_name="gemini-2.0-flash",
             message="hello",
@@ -86,6 +87,7 @@ class AgentApiTest(unittest.IsolatedAsyncioTestCase):
 
         platform.stream_chat.assert_awaited_once_with(
             agent_id="web.answer",
+            team_agent_ids=None,
             mode=None,
             model_name=model.model_name,
             message="hello",

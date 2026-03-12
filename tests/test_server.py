@@ -54,6 +54,7 @@ class ServerUploadTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         stream_chat.assert_awaited_once_with(
             agent_id="web.answer",
+            team_agent_ids=None,
             mode="orchestrated",
             model_name="gemini-2.0-flash",
             message="hello",
@@ -100,6 +101,7 @@ class ServerUploadTest(unittest.TestCase):
         )
         stream_chat.assert_awaited_once_with(
             agent_id="web.answer",
+            team_agent_ids=None,
             mode=None,
             model_name=selected.model_name,
             message="hello",
@@ -255,6 +257,7 @@ class ServerUploadTest(unittest.TestCase):
             )
             stream_chat.assert_awaited_once_with(
                 agent_id="web.answer",
+                team_agent_ids=None,
                 mode="orchestrated",
                 model_name="gemini-2.0-flash",
                 message="hello",
