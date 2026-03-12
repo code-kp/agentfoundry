@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { SMART_AGENT_ID } from "../lib/chatWorkspace";
+import { TEAM_MODE_AGENT_ID } from "../lib/chatWorkspace";
 
 function filterHiddenAgents(nodes) {
   return (Array.isArray(nodes) ? nodes : []).flatMap((node) => {
@@ -9,7 +9,7 @@ function filterHiddenAgents(nodes) {
     }
 
     if (node.type === "agent") {
-      return node.id === SMART_AGENT_ID ? [] : [node];
+      return node.id === TEAM_MODE_AGENT_ID ? [] : [node];
     }
 
     const children = filterHiddenAgents(node.children || []);
@@ -314,7 +314,7 @@ export function AgentPickerDrawer({
     () => new Set(normalizedSelectedTeamIds),
     [normalizedSelectedTeamIds],
   );
-  const teamModeAlreadyActive = selectedAgentId === SMART_AGENT_ID;
+  const teamModeAlreadyActive = selectedAgentId === TEAM_MODE_AGENT_ID;
   const browseBreadcrumbs = browsePath.length ? ["ROOT", ...browsePath] : ["ROOT"];
   const teamBreadcrumbs = teamPath.length ? ["ROOT", ...teamPath] : ["ROOT"];
 
@@ -342,7 +342,7 @@ export function AgentPickerDrawer({
       return;
     }
 
-    if (selectedAgentId === SMART_AGENT_ID && teamModeAgent) {
+    if (selectedAgentId === TEAM_MODE_AGENT_ID && teamModeAgent) {
       setActiveView("team");
       setTeamPath([]);
       return;
@@ -759,7 +759,7 @@ export function AgentPickerDrawer({
                   type="button"
                   className="conversation-dialog-button primary"
                   disabled={!normalizedSelectedTeamIds.length}
-                  onClick={() => onSelectAgent(SMART_AGENT_ID, { teamAgentIds: normalizedSelectedTeamIds })}
+                  onClick={() => onSelectAgent(TEAM_MODE_AGENT_ID, { teamAgentIds: normalizedSelectedTeamIds })}
                 >
                   {teamModeAlreadyActive ? "Update team" : isNewChatMode ? "Start with Team Mode" : "Use Team Mode"}
                 </button>

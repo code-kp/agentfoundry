@@ -21,7 +21,7 @@ import {
 } from "./lib/preferences";
 import { useWorkspaceChat } from "./hooks/useWorkspaceChat";
 import {
-  SMART_AGENT_ID,
+  TEAM_MODE_AGENT_ID,
   listTeamEligibleAgents,
   resolveTeamAgentIds,
   summarizeTeamAgents,
@@ -114,7 +114,7 @@ export function App() {
     tree: agentTree,
   } = useWorkspaceChat(userId, responseStreaming, effectiveModelId);
   const teamModeAgent = React.useMemo(
-    () => agents.find((item) => item.id === SMART_AGENT_ID) || null,
+    () => agents.find((item) => item.id === TEAM_MODE_AGENT_ID) || null,
     [agents],
   );
   const teamAgentOptions = React.useMemo(
@@ -261,7 +261,7 @@ export function App() {
   const openAgentPickerForSwitch = React.useCallback(() => {
     setAgentPickerMode("switch");
     setDraftTeamAgentIds(
-      activeAgentId === SMART_AGENT_ID
+      activeAgentId === TEAM_MODE_AGENT_ID
         ? resolveTeamAgentIds(activeChat?.teamAgentIds, agents, { fallbackToAll: false })
         : resolveTeamAgentIds([], agents, { fallbackToAll: false }),
     );
@@ -425,8 +425,8 @@ export function App() {
             onSetRuntimeMode={onSetRuntimeMode}
             onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
             onSend={onSend}
-            teamModeActive={activeAgentId === SMART_AGENT_ID}
-            teamModeSummary={activeAgentId === SMART_AGENT_ID ? activeTeamSummary : ""}
+            teamModeActive={activeAgentId === TEAM_MODE_AGENT_ID}
+            teamModeSummary={activeAgentId === TEAM_MODE_AGENT_ID ? activeTeamSummary : ""}
           />
         </ErrorBoundary>
       </section>

@@ -9,14 +9,15 @@ function createMessageBase(role, metadata = {}) {
   };
 }
 
-export const SMART_AGENT_ID = "smart";
+export const TEAM_MODE_AGENT_ID = "smart";
+export const TEAM_MODE_AGENT_NAME = "Team Mode";
 
 export function listTeamEligibleAgents(agents) {
   return (Array.isArray(agents) ? agents : []).filter((agent) => (
     agent
       && typeof agent === "object"
       && String(agent.id || "").trim()
-      && String(agent.id || "").trim() !== SMART_AGENT_ID
+      && String(agent.id || "").trim() !== TEAM_MODE_AGENT_ID
   ));
 }
 
@@ -215,7 +216,10 @@ export function filterTree(nodes, query) {
 }
 
 export function buildChatTitle(agentId, agents, chats, excludeChatId = "") {
-  const base = agents.find((item) => item.id === agentId)?.name || agentId || "Conversation";
+  const base = agents.find((item) => item.id === agentId)?.name
+    || (agentId === TEAM_MODE_AGENT_ID ? TEAM_MODE_AGENT_NAME : "")
+    || agentId
+    || "Conversation";
   const count = chats.filter(
     (chat) => chat.agentId === agentId && chat.id !== excludeChatId,
   ).length;
@@ -225,7 +229,7 @@ export function buildChatTitle(agentId, agents, chats, excludeChatId = "") {
 
 export function createChat(agentId, agents, chats, options = {}) {
   const agent = agents.find((item) => item.id === agentId) || null;
-  const teamAgentIds = agentId === SMART_AGENT_ID
+  const teamAgentIds = agentId === TEAM_MODE_AGENT_ID
     ? resolveTeamAgentIds(options.teamAgentIds, agents)
     : resolveTeamAgentIds(options.teamAgentIds, agents, { fallbackToAll: false });
   return {

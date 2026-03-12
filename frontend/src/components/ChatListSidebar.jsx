@@ -241,7 +241,7 @@ export function ChatListSidebar({
               );
             })
           ) : (
-            <div className="chat-sidebar-empty">Start with Smart or choose any agent for your first conversation.</div>
+            <div className="chat-sidebar-empty">Start with Team Mode or choose any agent for your first conversation.</div>
           )}
         </div>
 

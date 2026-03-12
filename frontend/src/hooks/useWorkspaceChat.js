@@ -24,7 +24,7 @@ import {
   createUserMessage,
   filterTree,
   normalizeAgentTree,
-  SMART_AGENT_ID,
+  TEAM_MODE_AGENT_ID,
   resolveTeamAgentIds,
   resolveChatRuntimeMode,
 } from "../lib/chatWorkspace";
@@ -90,7 +90,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
     const normalizedTeamAgentIds = resolveTeamAgentIds(
       chat.teamAgentIds,
       availableAgents,
-      { fallbackToAll: agentId === SMART_AGENT_ID },
+      { fallbackToAll: agentId === TEAM_MODE_AGENT_ID },
     );
 
     return {
@@ -120,7 +120,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
       return {
         ...chat,
         runtimeMode: nextRuntimeMode,
-        teamAgentIds: chat.agentId === "smart"
+        teamAgentIds: chat.agentId === TEAM_MODE_AGENT_ID
           ? resolveTeamAgentIds(chat.teamAgentIds, incomingAgents)
           : resolveTeamAgentIds(chat.teamAgentIds, incomingAgents, { fallbackToAll: false }),
         updatedAt: Date.now(),
@@ -417,7 +417,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
     setError("");
 
     if (!agentId || agentId === activeAgentId) {
-      if (!activeChat || !activeChatId || agentId !== SMART_AGENT_ID) {
+      if (!activeChat || !activeChatId || agentId !== TEAM_MODE_AGENT_ID) {
         return;
       }
 
@@ -439,7 +439,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
     updateChat(activeChat.id, (chat) => ({
       ...chat,
       agentId,
-      teamAgentIds: agentId === SMART_AGENT_ID
+      teamAgentIds: agentId === TEAM_MODE_AGENT_ID
         ? resolveTeamAgentIds(options.teamAgentIds || chat.teamAgentIds, agents)
         : resolveTeamAgentIds(chat.teamAgentIds, agents, { fallbackToAll: false }),
       runtimeMode: resolveChatRuntimeMode(
@@ -678,7 +678,7 @@ export function useWorkspaceChat(userId, responseStreaming, modelId) {
         modelId,
         conversationId: chatId,
         message: text,
-        teamAgentIds: activeAgentId === SMART_AGENT_ID
+        teamAgentIds: activeAgentId === TEAM_MODE_AGENT_ID
           ? resolveTeamAgentIds(activeChat.teamAgentIds, agents)
           : undefined,
         userId,
