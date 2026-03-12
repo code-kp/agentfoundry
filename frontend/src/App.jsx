@@ -20,7 +20,12 @@ import {
   sanitizeUserId,
 } from "./lib/preferences";
 import { useWorkspaceChat } from "./hooks/useWorkspaceChat";
-import { SMART_AGENT_ID } from "./lib/chatWorkspace";
+import {
+  SMART_AGENT_ID,
+  listTeamEligibleAgents,
+  resolveTeamAgentIds,
+  summarizeTeamAgents,
+} from "./lib/chatWorkspace";
 import {
   THEME_MODE_STORAGE_KEY,
   applyTheme,
@@ -70,6 +75,7 @@ export function App() {
   const [isAgentPickerOpen, setIsAgentPickerOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [agentPickerMode, setAgentPickerMode] = React.useState("switch");
+  const [draftTeamAgentIds, setDraftTeamAgentIds] = React.useState([]);
   const [sidebarWidth, setSidebarWidth] = React.useState(resolveInitialSidebarWidth);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(resolveInitialSidebarCollapsed);
   const [isResizingSidebar, setIsResizingSidebar] = React.useState(false);
@@ -85,7 +91,6 @@ export function App() {
     agentDirectoryLoading,
     chats,
     error,
-    filteredTree,
     initialLoadError,
     initialLoadRetrying,
     isSending,
@@ -106,10 +111,19 @@ export function App() {
     sessionLoading,
     searchText,
     setSearchText,
+    tree: agentTree,
   } = useWorkspaceChat(userId, responseStreaming, effectiveModelId);
-  const smartAgent = React.useMemo(
+  const teamModeAgent = React.useMemo(
     () => agents.find((item) => item.id === SMART_AGENT_ID) || null,
     [agents],
+  );
+  const teamAgentOptions = React.useMemo(
+    () => listTeamEligibleAgents(agents),
+    [agents],
+  );
+  const activeTeamSummary = React.useMemo(
+    () => summarizeTeamAgents(activeChat?.teamAgentIds, agents),
+    [activeChat?.teamAgentIds, agents],
   );
 
   React.useEffect(() => {
@@ -203,6 +217,12 @@ export function App() {
   }, [responseStreaming]);
 
   React.useEffect(() => {
+    setDraftTeamAgentIds((current) => (
+      resolveTeamAgentIds(current, agents, { fallbackToAll: false })
+    ));
+  }, [agents]);
+
+  React.useEffect(() => {
     if (!isResizingSidebar) {
       return undefined;
     }
@@ -240,16 +260,22 @@ export function App() {
 
   const openAgentPickerForSwitch = React.useCallback(() => {
     setAgentPickerMode("switch");
+    setDraftTeamAgentIds(
+      activeAgentId === SMART_AGENT_ID
+        ? resolveTeamAgentIds(activeChat?.teamAgentIds, agents, { fallbackToAll: false })
+        : resolveTeamAgentIds([], agents, { fallbackToAll: false }),
+    );
     setSearchText("");
     setIsAgentPickerOpen(true);
     void refreshAgentDirectory();
-  }, [refreshAgentDirectory, setSearchText]);
+  }, [activeAgentId, activeChat?.teamAgentIds, agents, refreshAgentDirectory, setSearchText]);
   const openAgentPickerForNewChat = React.useCallback(() => {
     setAgentPickerMode("new_chat");
+    setDraftTeamAgentIds(resolveTeamAgentIds([], agents, { fallbackToAll: false }));
     setSearchText("");
     setIsAgentPickerOpen(true);
     void refreshAgentDirectory();
-  }, [refreshAgentDirectory, setSearchText]);
+  }, [agents, refreshAgentDirectory, setSearchText]);
   const closeAgentPicker = React.useCallback(() => {
     setIsAgentPickerOpen(false);
     setSearchText("");
@@ -272,31 +298,15 @@ export function App() {
   const handleChatModelIdChange = React.useCallback((nextValue) => {
     setChatModelId(sanitizeModelId(nextValue));
   }, []);
-  const handleAgentPickerSelect = React.useCallback((agentId) => {
+  const handleAgentPickerSelect = React.useCallback((agentId, options = {}) => {
     if (agentPickerMode === "new_chat") {
-      onNewChat(agentId);
+      onNewChat(agentId, options);
     } else {
-      onSelectAgent(agentId);
+      onSelectAgent(agentId, options);
     }
 
     closeAgentPicker();
   }, [agentPickerMode, closeAgentPicker, onNewChat, onSelectAgent]);
-  const handleStartSmartChat = React.useCallback(() => {
-    if (!smartAgent) {
-      return;
-    }
-    onNewChat(smartAgent.id);
-  }, [onNewChat, smartAgent]);
-  const handleUseSmartAgent = React.useCallback(() => {
-    if (!smartAgent) {
-      return;
-    }
-    if (activeChat?.id) {
-      onSelectAgent(smartAgent.id);
-      return;
-    }
-    onNewChat(smartAgent.id);
-  }, [activeChat?.id, onNewChat, onSelectAgent, smartAgent]);
 
   const handleSidebarResizeStart = React.useCallback((event) => {
     if (window.innerWidth <= 1100 || event.button !== 0) {
@@ -368,7 +378,6 @@ export function App() {
         onCollapse={() => setIsSidebarCollapsed(true)}
         onDeleteChat={onDeleteChat}
         onNewChat={openAgentPickerForNewChat}
-        onStartSmartChat={handleStartSmartChat}
         onOpenSettings={openSettings}
         onRenameChat={onRenameChat}
         onSelectChat={onSelectChat}
@@ -414,11 +423,10 @@ export function App() {
             onOpenAgentPicker={openAgentPickerForSwitch}
             onRefreshTitle={onRefreshTitle}
             onSetRuntimeMode={onSetRuntimeMode}
-            onUseSmartAgent={handleUseSmartAgent}
             onToggleSidebar={() => setIsSidebarCollapsed((current) => !current)}
             onSend={onSend}
-            showSmartAction={Boolean(smartAgent)}
-            smartAgentActive={activeAgentId === SMART_AGENT_ID}
+            teamModeActive={activeAgentId === SMART_AGENT_ID}
+            teamModeSummary={activeAgentId === SMART_AGENT_ID ? activeTeamSummary : ""}
           />
         </ErrorBoundary>
       </section>
@@ -428,10 +436,13 @@ export function App() {
         isLoading={agentDirectoryLoading}
         mode={agentPickerMode}
         selectedAgentId={agentPickerMode === "switch" ? activeAgentId : ""}
-        smartAgent={smartAgent}
-        tree={filteredTree}
+        selectedTeamAgentIds={draftTeamAgentIds}
+        teamAgents={teamAgentOptions}
+        teamModeAgent={teamModeAgent}
+        tree={agentTree}
         onClose={closeAgentPicker}
         onSelectAgent={handleAgentPickerSelect}
+        onTeamAgentIdsChange={setDraftTeamAgentIds}
         searchText={searchText}
         onSearchTextChange={setSearchText}
       />

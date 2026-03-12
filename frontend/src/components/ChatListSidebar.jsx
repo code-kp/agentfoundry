@@ -34,7 +34,6 @@ export function ChatListSidebar({
   onDeleteChat,
   onSelectChat,
   onNewChat,
-  onStartSmartChat,
   onOpenSettings,
   onRenameChat,
 }) {
@@ -144,9 +143,6 @@ export function ChatListSidebar({
           <div className="sidebar-header-actions">
             <button type="button" className="sidebar-action" onClick={onNewChat}>
               New
-            </button>
-            <button type="button" className="sidebar-action sidebar-smart-button" onClick={onStartSmartChat}>
-              Smart
             </button>
             <button
               type="button"

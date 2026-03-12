@@ -37,10 +37,9 @@ export function ChatPanel({
   onRefreshTitle,
   onSetRuntimeMode,
   onToggleSidebar,
-  onUseSmartAgent,
   onSend,
-  showSmartAction,
-  smartAgentActive,
+  teamModeActive,
+  teamModeSummary,
 }) {
   const [sessionCopied, setSessionCopied] = React.useState(false);
   const hasActiveAgent = Boolean(agentName || agentId);
@@ -183,17 +182,10 @@ export function ChatPanel({
             >
               {hasActiveAgent ? "Edit" : "Choose"}
             </button>
-            {showSmartAction ? (
-              <button
-                type="button"
-                className="agent-edit-button smart-agent-button"
-                disabled={isSending || smartAgentActive}
-                onClick={onUseSmartAgent}
-              >
-                {smartAgentActive ? "Smart active" : "Use Smart"}
-              </button>
-            ) : null}
           </div>
+          {teamModeActive && teamModeSummary ? (
+            <p className="workspace-agent-scope">{teamModeSummary}</p>
+          ) : null}
           {agentDescription ? <p className="workspace-agent-description">{agentDescription}</p> : null}
         </div>
       </header>
