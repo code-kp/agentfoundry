@@ -67,28 +67,24 @@ def main(argv: list[str] | None = None) -> int:
         aliases=["new-agent"],
         help="Run the shared agent scaffold wizard against the current workspace.",
     )
-    create_agent_parser.add_argument("args", nargs=argparse.REMAINDER)
 
     sync_parser = subparsers.add_parser(
         "sync-embedding",
         aliases=["sync-embeddings"],
         help="Refresh semantic retrieval embeddings for the current workspace.",
     )
-    sync_parser.add_argument("args", nargs=argparse.REMAINDER)
 
     format_parser = subparsers.add_parser(
         "format",
         help="Run ruff format against the current project.",
     )
-    format_parser.add_argument("args", nargs=argparse.REMAINDER)
 
     test_parser = subparsers.add_parser(
         "test",
         help="Run pytest for the current project.",
     )
-    test_parser.add_argument("args", nargs=argparse.REMAINDER)
 
-    args = parser.parse_args(argv)
+    args, extra_args = parser.parse_known_args(argv)
     config = load_config()
     command = str(args.command or "")
     if command in {"start", "dev"}:
@@ -102,13 +98,13 @@ def main(argv: list[str] | None = None) -> int:
     if command == "stop":
         return stop_port(int(args.port or config.port))
     if command in {"create-agent", "new-agent"}:
-        return run_create_agent(config, list(args.args))
+        return run_create_agent(config, extra_args)
     if command in {"sync-embedding", "sync-embeddings"}:
-        return run_sync_embeddings(config, list(args.args))
+        return run_sync_embeddings(config, extra_args)
     if command == "format":
-        return run_format(config, list(args.args))
+        return run_format(config, extra_args)
     if command == "test":
-        return run_test(config, list(args.args))
+        return run_test(config, extra_args)
     return 1
 
 
