@@ -23,13 +23,13 @@ if TYPE_CHECKING:
     from core.platform import AgentPlatform
 
 
-SMART_AGENT_ID = "smart"
-SMART_AGENT_NAME = "Team Mode"
-SMART_AGENT_DESCRIPTION = "Coordinates a response across the selected agents and returns only routed-agent output."
+TEAM_AGENT_ID = "team"
+TEAM_AGENT_NAME = "Team Mode"
+TEAM_AGENT_DESCRIPTION = "Coordinates a response across the selected agents and returns only routed-agent output."
 
 DEFAULT_MODEL = "gemini-2.0-flash"
 ROUTER_TIMEOUT_SECONDS = 20.0
-MAX_SMART_ITERATIONS = 4
+MAX_TEAM_ITERATIONS = 4
 ROUTING_DEBUG_EVENT_TYPES = {
     "tool_selection_reason",
     "tool_started",
@@ -39,7 +39,7 @@ ROUTING_DEBUG_EVENT_TYPES = {
 }
 
 
-class SmartDecision(BaseModel):
+class TeamDecision(BaseModel):
     action: Literal["delegate", "finalize"]
     rationale: str = Field(default="")
     agent_id: str = Field(default="")
@@ -68,7 +68,7 @@ class RoutedAgentResult:
     streamed_output: bool = False
 
 
-class SmartAgentRuntime:
+class TeamAgentRuntime:
     def __init__(
         self,
         platform: AgentPlatform,
@@ -147,7 +147,7 @@ class SmartAgentRuntime:
             await stream.emit(
                 "run_started",
                 {
-                    "agent_id": SMART_AGENT_ID,
+                    "agent_id": TEAM_AGENT_ID,
                     "session_id": session_id,
                     "user_id": user_id,
                     "message": (
@@ -174,15 +174,15 @@ class SmartAgentRuntime:
             usages: list[dict[str, Any]] = []
             saw_streamed_output = False
 
-            for iteration in range(1, MAX_SMART_ITERATIONS + 1):
+            for iteration in range(1, MAX_TEAM_ITERATIONS + 1):
                 await stream_progress.emit_thinking_step(
-                    step_id="smart_decision_{index}".format(index=iteration),
+                    step_id="team_decision_{index}".format(index=iteration),
                     label="Selecting the next agent",
                     detail=(
                         "Checking whether the answer is ready or whether another agent should take the next step."
                     ),
                     state="running",
-                    agent_id=SMART_AGENT_ID,
+                    agent_id=TEAM_AGENT_ID,
                 )
                 decision = await self._decide_next_step(
                     message=message,
@@ -204,25 +204,25 @@ class SmartAgentRuntime:
                         return
 
                     await stream_progress.emit_thinking_step(
-                        step_id="smart_decision_{index}".format(index=iteration),
+                        step_id="team_decision_{index}".format(index=iteration),
                         label="Finalizing the answer",
                         detail=str(decision.rationale or "").strip()
                         or "The gathered evidence is sufficient to answer directly.",
                         state="done",
-                        agent_id=SMART_AGENT_ID,
+                        agent_id=TEAM_AGENT_ID,
                     )
                     if stream_output and not saw_streamed_output:
                         await stream.emit(
                             "assistant_delta",
                             {
-                                "agent_id": SMART_AGENT_ID,
+                                "agent_id": TEAM_AGENT_ID,
                                 "text": final_text,
                             },
                         )
                     await stream.emit(
                         "assistant_message",
                         {
-                            "agent_id": SMART_AGENT_ID,
+                            "agent_id": TEAM_AGENT_ID,
                             "text": final_text,
                             "usage": _merge_usage_payloads(usages),
                         },
@@ -230,7 +230,7 @@ class SmartAgentRuntime:
                     await stream.emit(
                         "run_completed",
                         {
-                            "agent_id": SMART_AGENT_ID,
+                            "agent_id": TEAM_AGENT_ID,
                             "session_id": session_id,
                             "message": "Completed the coordinated response.",
                         },
@@ -241,7 +241,7 @@ class SmartAgentRuntime:
                 candidate = self._candidate_lookup(step.agent_id, candidates)
 
                 await stream_progress.emit_thinking_step(
-                    step_id="smart_delegate_{index}".format(index=iteration),
+                    step_id="team_delegate_{index}".format(index=iteration),
                     label="Using {name}".format(
                         name=str(candidate.get("name") or step.agent_id)
                     ),
@@ -249,7 +249,7 @@ class SmartAgentRuntime:
                     or step.goal
                     or "Handing this part of the task to the most relevant agent.",
                     state="running",
-                    agent_id=SMART_AGENT_ID,
+                    agent_id=TEAM_AGENT_ID,
                 )
                 result = await self._run_routed_agent(
                     stream=stream,
@@ -268,7 +268,7 @@ class SmartAgentRuntime:
                 saw_streamed_output = saw_streamed_output or result.streamed_output
 
                 await stream_progress.emit_thinking_step(
-                    step_id="smart_delegate_{index}".format(index=iteration),
+                    step_id="team_delegate_{index}".format(index=iteration),
                     label="{name} finished".format(name=result.agent_name),
                     detail=(
                         "Captured the delegated output."
@@ -276,7 +276,7 @@ class SmartAgentRuntime:
                         else "The delegated agent did not return a usable output."
                     ),
                     state="done" if result.text.strip() else "error",
-                    agent_id=SMART_AGENT_ID,
+                    agent_id=TEAM_AGENT_ID,
                 )
 
             fallback_answer = self._compose_fallback_answer(results)
@@ -289,24 +289,24 @@ class SmartAgentRuntime:
                 return
 
             await stream_progress.emit_thinking_step(
-                step_id="smart_limit",
+                step_id="team_limit",
                 label="Reached the routing limit",
                 detail="Finalizing from the outputs already gathered instead of assigning another agent.",
                 state="done",
-                agent_id=SMART_AGENT_ID,
+                agent_id=TEAM_AGENT_ID,
             )
             if stream_output and not saw_streamed_output:
                 await stream.emit(
                     "assistant_delta",
                     {
-                        "agent_id": SMART_AGENT_ID,
+                        "agent_id": TEAM_AGENT_ID,
                         "text": fallback_answer,
                     },
                 )
             await stream.emit(
                 "assistant_message",
                 {
-                    "agent_id": SMART_AGENT_ID,
+                    "agent_id": TEAM_AGENT_ID,
                     "text": fallback_answer,
                     "usage": _merge_usage_payloads(usages),
                 },
@@ -314,18 +314,18 @@ class SmartAgentRuntime:
             await stream.emit(
                 "run_completed",
                 {
-                    "agent_id": SMART_AGENT_ID,
+                    "agent_id": TEAM_AGENT_ID,
                     "session_id": session_id,
                     "message": "Completed the coordinated response.",
                 },
             )
         except Exception as exc:
             await stream_progress.emit_thinking_step(
-                step_id="smart_failure",
+                step_id="team_failure",
                 label="Agent coordination failed",
                 detail=str(exc) or "The agent handoff loop could not complete.",
                 state="error",
-                agent_id=SMART_AGENT_ID,
+                agent_id=TEAM_AGENT_ID,
             )
             await self._emit_terminal_error(
                 stream=stream,
@@ -346,7 +346,7 @@ class SmartAgentRuntime:
         await stream.emit(
             "error",
             {
-                "agent_id": SMART_AGENT_ID,
+                "agent_id": TEAM_AGENT_ID,
                 "session_id": session_id,
                 "message": message,
                 "error": "team_mode_error",
@@ -355,7 +355,7 @@ class SmartAgentRuntime:
         await stream.emit(
             "assistant_message",
             {
-                "agent_id": SMART_AGENT_ID,
+                "agent_id": TEAM_AGENT_ID,
                 "text": message,
             },
         )
@@ -367,7 +367,7 @@ class SmartAgentRuntime:
         history: Sequence[Mapping[str, Any]],
         candidates: Sequence[Mapping[str, Any]],
         results: Sequence[RoutedAgentResult],
-    ) -> SmartDecision:
+    ) -> TeamDecision:
         last_error: Exception | None = None
         for _attempt in range(2):
             try:
@@ -383,7 +383,7 @@ class SmartAgentRuntime:
 
         fallback_answer = self._compose_fallback_answer(results)
         if fallback_answer:
-            return SmartDecision(
+            return TeamDecision(
                 action="finalize",
                 rationale=(
                     "Finalizing from the collected agent outputs because the planner did not return a usable next step."
@@ -400,7 +400,7 @@ class SmartAgentRuntime:
         history: Sequence[Mapping[str, Any]],
         candidates: Sequence[Mapping[str, Any]],
         results: Sequence[RoutedAgentResult],
-    ) -> SmartDecision:
+    ) -> TeamDecision:
         session_service = InMemorySessionService()
         session_id = "agent-router-{value}".format(value=uuid4())
         user_id = "agent-router"
@@ -456,16 +456,16 @@ class SmartAgentRuntime:
                     )
 
         payload = _extract_json_payload(generated)
-        return SmartDecision.model_validate(payload)
+        return TeamDecision.model_validate(payload)
 
     def _normalize_decision(
         self,
-        decision: SmartDecision,
+        decision: TeamDecision,
         *,
         candidates: Sequence[Mapping[str, Any]],
-    ) -> SmartDecision:
+    ) -> TeamDecision:
         if decision.action == "finalize":
-            return SmartDecision(
+            return TeamDecision(
                 action="finalize",
                 rationale=_compact_text(
                     decision.rationale or "The available evidence is sufficient.",
@@ -483,7 +483,7 @@ class SmartAgentRuntime:
         if requested_mode not in runtime_modes:
             requested_mode = default_mode if default_mode in runtime_modes else "direct"
 
-        return SmartDecision(
+        return TeamDecision(
             action="delegate",
             rationale=_compact_text(
                 decision.rationale
@@ -505,7 +505,7 @@ class SmartAgentRuntime:
 
     def _step_from_decision(
         self,
-        decision: SmartDecision,
+        decision: TeamDecision,
         *,
         candidates: Sequence[Mapping[str, Any]],
     ) -> RoutedAgentStep:
@@ -571,7 +571,7 @@ class SmartAgentRuntime:
                         await stream.emit(
                             "assistant_delta",
                             {
-                                "agent_id": SMART_AGENT_ID,
+                                "agent_id": TEAM_AGENT_ID,
                                 "text": "\n\n[{name}]\n".format(
                                     name=str(candidate.get("name") or resolved_agent_id)
                                 ),
@@ -581,7 +581,7 @@ class SmartAgentRuntime:
                     await stream.emit(
                         "assistant_delta",
                         {
-                            "agent_id": SMART_AGENT_ID,
+                            "agent_id": TEAM_AGENT_ID,
                             "text": text,
                         },
                     )
@@ -638,11 +638,11 @@ class SmartAgentRuntime:
                 await stream.emit(
                     "thinking_step",
                     {
-                        "agent_id": SMART_AGENT_ID,
+                        "agent_id": TEAM_AGENT_ID,
                         "source_agent_id": routed_agent_id,
                         "source_agent_name": routed_agent_name,
                         "channel": "thinking",
-                        "step_id": "smart.{step}.error".format(step=step_index),
+                        "step_id": "team.{step}.error".format(step=step_index),
                         "label": "{agent}: encountered an issue".format(
                             agent=routed_agent_name
                         ),
@@ -662,7 +662,7 @@ class SmartAgentRuntime:
             return
 
         payload = dict(event)
-        payload["agent_id"] = SMART_AGENT_ID
+        payload["agent_id"] = TEAM_AGENT_ID
         payload["source_agent_id"] = routed_agent_id
         payload["source_agent_name"] = routed_agent_name
         payload.setdefault(
@@ -670,7 +670,7 @@ class SmartAgentRuntime:
         )
 
         if event_type == "thinking_step":
-            payload["step_id"] = "smart.{step}.{detail}".format(
+            payload["step_id"] = "team.{step}.{detail}".format(
                 step=step_index,
                 detail=str(event.get("step_id") or "work").strip() or "work",
             )
