@@ -73,6 +73,10 @@ const EVENT_VISUALS = {
   },
 };
 
+function getThoughtLabel(active) {
+  return active ? "Thinking" : "Thoughts";
+}
+
 function getEventKind(event) {
   if (!event) {
     return "thinking";
@@ -295,12 +299,15 @@ function getThinkingNarration(event) {
   }
 }
 
-function getEventKicker(event) {
+function getEventKicker(event, active = false) {
   if (!event) {
-    return EVENT_VISUALS.thinking.kicker;
+    return getThoughtLabel(active);
   }
 
   const visual = getEventVisual(event);
+  if (getEventKind(event) === "thinking") {
+    return getThoughtLabel(active);
+  }
   if (visual.tone === "agent") {
     const sourceAgentName = normalizeText(event.data?.source_agent_name || "");
     if (sourceAgentName) {
@@ -313,10 +320,13 @@ function getEventKicker(event) {
 
 function getBadgeLabel(event, active) {
   if (!event) {
-    return active ? "💭 Thinking" : "💭 Thoughts";
+    return `💭 ${getThoughtLabel(active)}`;
   }
 
   const visual = getEventVisual(event);
+  if (getEventKind(event) === "thinking") {
+    return `${visual.emoji} ${getThoughtLabel(active)}`;
+  }
   return `${visual.emoji} ${visual.badge}`;
 }
 
@@ -425,7 +435,7 @@ export function ExecutionSteps({ events, active }) {
   const showFocusedLayout = active || isSettling || isCollapsing;
   const showCollapsedSummary = !active && !expanded && !isSettling && !isCollapsing && events.length > 0;
   const showCurrentStep = active || isSettling || isCollapsing || !expanded;
-  const heading = active ? "Thinking through the request" : "Thought process";
+  const heading = active ? "Thinking through the request" : "Thoughts";
   const summary = latestNarration || (active
     ? "I'm getting oriented before I answer."
     : "The response is complete.");
@@ -637,7 +647,7 @@ export function ExecutionSteps({ events, active }) {
                   <span className={`execution-event-icon event-${latestVisual.tone}`} aria-hidden="true">
                     {latestVisual.emoji}
                   </span>
-                  {getEventKicker(latestEvent)}
+                  {getEventKicker(latestEvent, active)}
                 </span>
                 {latestEvent?.timestamp ? (
                   <time dateTime={toDateTimeAttr(latestEvent.timestamp)}>
@@ -698,7 +708,7 @@ export function ExecutionSteps({ events, active }) {
                           <span className={`execution-event-icon event-${eventVisual.tone}`} aria-hidden="true">
                             {eventVisual.emoji}
                           </span>
-                          {getEventKicker(event)}
+                          {getEventKicker(event, active)}
                         </span>
                         {event.timestamp ? (
                           <time dateTime={toDateTimeAttr(event.timestamp)}>
