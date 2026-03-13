@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 from agent_foundry.api import create_runtime
 from agent_foundry.config import FoundryConfig
-from agent_foundry.web_runtime import SinglePageAppFiles, packaged_web_dist
 from core.execution.shared.request_context import (
     bind_conversation_id,
     reset_conversation_id,
@@ -268,10 +267,6 @@ def create_app(config: FoundryConfig) -> FastAPI:
                 },
             }
         )
-
-    web_dist = packaged_web_dist()
-    if web_dist is not None:
-        app.mount("/", SinglePageAppFiles(web_dist), name="web")
 
     setattr(app, "service", service)
     setattr(app, "platform_service", platform_service)

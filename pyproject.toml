@@ -1,7 +1,7 @@
 [project]
 name = "agentfoundry"
 version = "0.1.0"
-description = "Reusable agent platform runtime, API factory, shared web UI, and CLI tooling."
+description = "Reusable agent platform runtime, API factory, and CLI tooling."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -28,30 +28,18 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["agent_foundry*", "core*", "services*"]
-exclude = ["frontend*", "tests*"]
+exclude = ["tests*"]
 namespaces = true
-
-[tool.setuptools.package-data]
-agent_foundry = [
-  "web/dist/index.html",
-  "web/dist/assets/*",
-]
 
 [project.scripts]
 foundry-new-agent = "agent_foundry.cli.new_agent:main"
 foundry-sync-embeddings = "agent_foundry.cli.sync_embeddings:main"
-foundry-dev = "agent_foundry.cli.dev:main"
 
 [tool.poe.tasks]
-frontend-install = "npm --prefix frontend install"
-frontend = "npm --prefix frontend run dev -- --host 127.0.0.1 --port 3000"
-frontend-build = "npm --prefix frontend run build -- --outDir ../src/agent_foundry/web/dist"
 install-tests-ext = "uv run python scripts/install_related_tests_extension.py"
 new-agent = "uv run foundry-new-agent"
 format = "ruff format ."
 test = "uv run python -m pytest"
-stop = "uv run foundry-dev stop"
-dev = "uv run foundry-dev run"
 embeddings-sync = "uv run foundry-sync-embeddings"
 
 [tool.pytest.ini_options]
