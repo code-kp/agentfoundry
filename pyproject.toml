@@ -11,6 +11,7 @@ dependencies = [
   "litellm>=1.0.0",
   "python-dotenv>=1.0.1",
   "python-multipart>=0.0.9",
+  "tomli>=2.0.1; python_version < '3.11'",
   "poethepoet>=0.32.0",
   "pytest>=8.3.5",
   "coverage>=7.6.0",
@@ -32,6 +33,7 @@ exclude = ["tests*"]
 namespaces = true
 
 [project.scripts]
+hey = "agent_foundry.cli.hey:main"
 foundry-new-agent = "agent_foundry.cli.new_agent:main"
 foundry-sync-embeddings = "agent_foundry.cli.sync_embeddings:main"
 

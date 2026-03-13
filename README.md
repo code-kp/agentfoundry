@@ -46,11 +46,16 @@ app = create_app(
 ## CLI
 
 ```bash
+hey start
+hey create-agent
+hey sync-embedding
 uv run foundry-new-agent --workspace-root src/my_app/workspace --workspace-package my_app.workspace
 uv run foundry-sync-embeddings --workspace-root src/my_app/workspace --data-root .
 ```
 
 App repos should compose `agent_foundry.server.create_app(...)` with a UI package or their own static mounting.
+
+`hey` is the shared project CLI. It reads local project defaults from `[tool.agentfoundry]` in the current repo's `pyproject.toml`.
 
 ## Notes
 
