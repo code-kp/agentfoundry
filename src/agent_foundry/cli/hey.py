@@ -27,12 +27,15 @@ STOP_WAIT_SECONDS = 0.25
 @dataclass(frozen=True)
 class HeyConfig:
     app: str = "foundry_app.app:app"
+    app_dir: str = "src"
     workspace_root: str = "src/workspace"
     workspace_package: str = "workspace"
     data_root: str = "."
     host: str = DEFAULT_HOST
     port: int = DEFAULT_PORT
     reload_dirs: tuple[str, ...] = ("src", "tests")
+    test_paths: tuple[str, ...] = ("tests",)
+    format_targets: tuple[str, ...] = (".",)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -73,6 +76,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     sync_parser.add_argument("args", nargs=argparse.REMAINDER)
 
+    format_parser = subparsers.add_parser(
+        "format",
+        help="Run ruff format against the current project.",
+    )
+    format_parser.add_argument("args", nargs=argparse.REMAINDER)
+
+    test_parser = subparsers.add_parser(
+        "test",
+        help="Run pytest for the current project.",
+    )
+    test_parser.add_argument("args", nargs=argparse.REMAINDER)
+
     args = parser.parse_args(argv)
     config = load_config()
     command = str(args.command or "")
@@ -90,6 +105,10 @@ def main(argv: list[str] | None = None) -> int:
         return run_create_agent(config, list(args.args))
     if command in {"sync-embedding", "sync-embeddings"}:
         return run_sync_embeddings(config, list(args.args))
+    if command == "format":
+        return run_format(config, list(args.args))
+    if command == "test":
+        return run_test(config, list(args.args))
     return 1
 
 
@@ -105,16 +124,25 @@ def load_config(project_root: Path | None = None) -> HeyConfig:
     if not isinstance(raw_config, dict):
         return HeyConfig()
 
-    reload_dirs = raw_config.get("reload_dirs", HeyConfig.reload_dirs)
-    if isinstance(reload_dirs, str):
-        reload_dirs = (reload_dirs,)
-    normalized_reload_dirs = (
-        tuple(str(item).strip() for item in reload_dirs if str(item).strip())
-        or HeyConfig.reload_dirs
+    normalized_reload_dirs = _normalize_str_list(
+        raw_config.get("reload_dirs", HeyConfig.reload_dirs),
+        fallback=HeyConfig.reload_dirs,
+    )
+    normalized_test_paths = _normalize_str_list(
+        raw_config.get("test_paths", HeyConfig.test_paths),
+        fallback=HeyConfig.test_paths,
+    )
+    normalized_format_targets = _normalize_str_list(
+        raw_config.get("format_targets", HeyConfig.format_targets),
+        fallback=HeyConfig.format_targets,
     )
 
     return HeyConfig(
         app=str(raw_config.get("app", HeyConfig.app)).strip() or HeyConfig.app,
+        app_dir=(
+            str(raw_config.get("app_dir", HeyConfig.app_dir)).strip()
+            or HeyConfig.app_dir
+        ),
         workspace_root=(
             str(raw_config.get("workspace_root", HeyConfig.workspace_root)).strip()
             or HeyConfig.workspace_root
@@ -132,6 +160,8 @@ def load_config(project_root: Path | None = None) -> HeyConfig:
         host=str(raw_config.get("host", HeyConfig.host)).strip() or HeyConfig.host,
         port=int(raw_config.get("port", HeyConfig.port)),
         reload_dirs=normalized_reload_dirs,
+        test_paths=normalized_test_paths,
+        format_targets=normalized_format_targets,
     )
 
 
@@ -149,7 +179,7 @@ def start_app(
         "uvicorn",
         app_path,
         "--app-dir",
-        "src",
+        config.app_dir,
         "--host",
         host,
         "--port",
@@ -202,6 +232,29 @@ def run_sync_embeddings(config: HeyConfig, extra_args: list[str]) -> int:
             *extra_args,
         ]
     )
+
+
+def run_format(config: HeyConfig, extra_args: list[str]) -> int:
+    command = [
+        sys.executable,
+        "-m",
+        "ruff",
+        "format",
+        *config.format_targets,
+        *extra_args,
+    ]
+    return subprocess.call(command)
+
+
+def run_test(config: HeyConfig, extra_args: list[str]) -> int:
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        *config.test_paths,
+        *extra_args,
+    ]
+    return subprocess.call(command)
 
 
 def stop_port(port: int) -> int:
@@ -300,6 +353,22 @@ def _find_unix_listening_pids(port: int) -> list[int]:
         if value.isdigit():
             pids.append(int(value))
     return sorted(set(pids))
+
+
+def _normalize_str_list(
+    raw_value: object,
+    *,
+    fallback: tuple[str, ...],
+) -> tuple[str, ...]:
+    if isinstance(raw_value, str):
+        raw_items = (raw_value,)
+    elif isinstance(raw_value, (list, tuple)):
+        raw_items = raw_value
+    else:
+        return fallback
+
+    normalized = tuple(str(item).strip() for item in raw_items if str(item).strip())
+    return normalized or fallback
 
 
 def _find_windows_listening_pids(port: int) -> list[int]:

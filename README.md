@@ -47,8 +47,11 @@ app = create_app(
 
 ```bash
 hey start
+hey stop
 hey create-agent
 hey sync-embedding
+hey format
+hey test
 uv run foundry-new-agent --workspace-root src/my_app/workspace --workspace-package my_app.workspace
 uv run foundry-sync-embeddings --workspace-root src/my_app/workspace --data-root .
 ```

@@ -12,7 +12,6 @@ dependencies = [
   "python-dotenv>=1.0.1",
   "python-multipart>=0.0.9",
   "tomli>=2.0.1; python_version < '3.11'",
-  "poethepoet>=0.32.0",
   "pytest>=8.3.5",
   "coverage>=7.6.0",
   "ruff>=0.6.0",
@@ -36,13 +35,6 @@ namespaces = true
 hey = "agent_foundry.cli.hey:main"
 foundry-new-agent = "agent_foundry.cli.new_agent:main"
 foundry-sync-embeddings = "agent_foundry.cli.sync_embeddings:main"
-
-[tool.poe.tasks]
-install-tests-ext = "uv run python scripts/install_related_tests_extension.py"
-new-agent = "uv run foundry-new-agent"
-format = "ruff format ."
-test = "uv run python -m pytest"
-embeddings-sync = "uv run foundry-sync-embeddings"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
