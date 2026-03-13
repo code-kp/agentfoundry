@@ -33,8 +33,6 @@ namespaces = true
 
 [project.scripts]
 hey = "agent_foundry.cli.hey:main"
-foundry-new-agent = "agent_foundry.cli.new_agent:main"
-foundry-sync-embeddings = "agent_foundry.cli.sync_embeddings:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -45,6 +45,8 @@ app = create_app(
 
 ## CLI
 
+`hey` is the only supported command surface.
+
 ```bash
 hey start
 hey stop
@@ -52,13 +54,12 @@ hey create-agent
 hey sync-embedding
 hey format
 hey test
-uv run foundry-new-agent --workspace-root src/my_app/workspace --workspace-package my_app.workspace
-uv run foundry-sync-embeddings --workspace-root src/my_app/workspace --data-root .
 ```
 
 App repos should compose `agent_foundry.server.create_app(...)` with a UI package or their own static mounting.
 
 `hey` is the shared project CLI. It reads local project defaults from `[tool.agentfoundry]` in the current repo's `pyproject.toml`.
+The lower-level `new_agent.py` and `sync_embeddings.py` modules remain internal implementation details behind `hey`.
 
 ## Notes
 
